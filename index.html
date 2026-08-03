@@ -1,0 +1,2040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroGeno3D: Genomic Variant Analyser and Decision Support Tool</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="flavicon.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="flavicon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="flavicon.png">
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- 3Dmol.js Dependency -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.0.4/3Dmol-min.js"></script>
+    <!-- html2pdf.js Dependency for premium PDF downloads -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        :root {
+            --bg-gradient: radial-gradient(circle at top right, #0f172a, #090d16);
+            --bg-color: #090d16;
+            --text-color: #f8fafc;
+            --text-secondary: #94a3b8;
+            --sidebar-bg: rgba(15, 23, 42, 0.85);
+            --card-bg: rgba(30, 41, 59, 0.45);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(59, 130, 246, 0.5);
+            --primary-gradient: linear-gradient(135deg, #06b6d4, #3b82f6);
+            --secondary-gradient: linear-gradient(135deg, #8b5cf6, #ec4899);
+            --primary-glow: rgba(59, 130, 246, 0.3);
+            --panel-glow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --badge-pathogenic-bg: rgba(239, 68, 68, 0.15);
+            --badge-pathogenic-text: #fca5a5;
+            --badge-vus-bg: rgba(245, 158, 11, 0.15);
+            --badge-vus-text: #fde047;
+            --badge-benign-bg: rgba(16, 185, 129, 0.15);
+            --badge-benign-text: #86efac;
+        }
+
+        [data-theme="light"] {
+            --bg-gradient: radial-gradient(circle at top right, #f1f5f9, #e2e8f0);
+            --bg-color: #e2e8f0;
+            --text-color: #0f172a;
+            --text-secondary: #475569;
+            --sidebar-bg: rgba(255, 255, 255, 0.9);
+            --card-bg: rgba(255, 255, 255, 0.8);
+            --border-color: rgba(0, 0, 0, 0.08);
+            --border-hover: rgba(37, 99, 235, 0.5);
+            --primary-glow: rgba(37, 99, 235, 0.15);
+            
+            --badge-pathogenic-bg: #fee2e2;
+            --badge-pathogenic-text: #991b1b;
+            --badge-vus-bg: #fef3c7;
+            --badge-vus-text: #92400e;
+            --badge-benign-bg: #d1fae5;
+            --badge-benign-text: #065f46;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg-gradient);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            min-height: 100vh;
+            transition: background 0.3s, background-color 0.3s, color 0.3s;
+            overflow-x: hidden;
+        }
+
+        /* Sidebar Styling */
+        .sidebar {
+            width: 340px;
+            background: var(--sidebar-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid var(--border-color);
+            padding: 24px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            height: 100vh;
+            overflow-y: auto;
+            position: sticky;
+            top: 0;
+            box-shadow: var(--panel-glow);
+            z-index: 10;
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-title {
+            font-size: 1rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, #f8fafc, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .theme-toggle {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 6px 12px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .theme-toggle:hover {
+            background: var(--primary-gradient);
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 0 12px var(--primary-glow);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        select, textarea, input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: rgba(15, 23, 42, 0.4);
+            color: var(--text-color);
+            font-family: inherit;
+            font-size: 0.88rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        select:focus, textarea:focus, input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+            background-color: rgba(15, 23, 42, 0.6);
+        }
+
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.82rem;
+            font-weight: 500;
+            cursor: pointer;
+            color: var(--text-color);
+            opacity: 0.85;
+            transition: opacity 0.2s;
+        }
+
+        .radio-option:hover {
+            opacity: 1;
+        }
+
+        .radio-option input[type="radio"] {
+            accent-color: #3b82f6;
+            width: 14px;
+            height: 14px;
+        }
+
+        .info-box {
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            line-height: 1.4;
+            color: #93c5fd;
+        }
+
+        .btn-run, .btn-fetch {
+            background: var(--primary-gradient);
+            color: #ffffff;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.88rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px var(--primary-glow);
+        }
+
+        .btn-run:hover, .btn-fetch:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+        }
+
+        .btn-download {
+            background: #1e293b;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 5px;
+        }
+
+        .btn-download:hover {
+            background: #3b82f6;
+            color: #ffffff;
+            border-color: transparent;
+        }
+
+        /* Main Content Styling */
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+        }
+
+        .header-title-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .header-title {
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, #3b82f6, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-subtitle {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-color);
+            opacity: 0.9;
+        }
+
+        .header-caption {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+        }
+
+        .header-badge {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            color: #818cf8;
+            padding: 6px 12px;
+            border-radius: 30px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .api-status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.78rem;
+            color: #10b981;
+            font-weight: 600;
+            background: rgba(16, 185, 129, 0.1);
+            padding: 4px 10px;
+            border-radius: 4px;
+        }
+        
+        .api-status-dot {
+            width: 7px;
+            height: 7px;
+            background-color: #10b981;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 6px #10b981;
+        }
+
+        /* Grid Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            grid-template-areas: 
+                "vis card1"
+                "vis card2"
+                "card4 card3";
+            gap: 20px;
+        }
+
+        #visCard { grid-area: vis; }
+        #card1 { grid-area: card1; }
+        #card2 { grid-area: card2; }
+        #card3 { grid-area: card3; }
+        #card4 { grid-area: card4; }
+
+        .mol-viewer {
+            width: 100%;
+            height: 440px;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            position: relative;
+            background-color: #090c15;
+            overflow: hidden;
+            box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.8);
+        }
+
+        .visualizer-toolbar {
+            display: flex;
+            justify-content: space-between;
+            background: rgba(15, 23, 42, 0.6);
+            border-top: 1px solid var(--border-color);
+            padding: 10px 14px;
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+            align-items: center;
+        }
+
+        .toolbar-info {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #94a3b8;
+            display: flex;
+            gap: 10px;
+        }
+
+        .toolbar-btn {
+            background: #1e293b;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .toolbar-btn:hover {
+            background: #3b82f6;
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+        }
+
+        .toolbar-btn.active {
+            background: var(--secondary-gradient);
+            border-color: transparent;
+            color: #fff;
+        }
+
+        .viewer-legend {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+
+        /* Glassmorphic Cards */
+        .report-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 20px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .report-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--primary-gradient);
+        }
+
+        .report-card.card-molecular::before {
+            background: var(--secondary-gradient);
+        }
+
+        .report-card.card-relevance::before {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .report-card.card-pubmed::before {
+            background: linear-gradient(135deg, #eab308, #ca8a04);
+        }
+
+        .report-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(59, 130, 246, 0.15);
+        }
+
+        .card-header {
+            font-size: 1.1rem;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: var(--text-color);
+        }
+
+        .card-body {
+            font-size: 0.88rem;
+            line-height: 1.5;
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 0.72rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .badge-pathogenic {
+            background-color: var(--badge-pathogenic-bg);
+            color: var(--badge-pathogenic-text);
+        }
+
+        .badge-vus {
+            background-color: var(--badge-vus-bg);
+            color: var(--badge-vus-text);
+        }
+
+        .badge-benign {
+            background-color: var(--badge-benign-bg);
+            color: var(--badge-benign-text);
+        }
+
+        .card-body ul {
+            list-style-type: none;
+            padding-left: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .card-body li {
+            position: relative;
+            padding-left: 16px;
+        }
+
+        .card-body li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #3b82f6;
+            font-weight: bold;
+            font-size: 1.1rem;
+            line-height: 1;
+            top: 1px;
+        }
+
+        hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 10px 0;
+        }
+
+        a {
+            color: #38bdf8;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        a:hover {
+            color: #60a5fa;
+            text-decoration: underline;
+        }
+
+        .footer {
+            margin-top: auto;
+            border-top: 1px solid var(--border-color);
+            padding: 20px 0;
+            text-align: center;
+            font-size: 0.75rem;
+            opacity: 0.6;
+            line-height: 1.4;
+            color: var(--text-secondary);
+        }
+
+        .footer-credit {
+            font-size: 0.9rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            margin-top: 8px;
+            color: #60a5fa;
+        }
+
+        @media (max-width: 1024px) {
+            body {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+            .dashboard-grid {
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+            }
+            #visCard { order: 1; }
+            #card1 { order: 2; }
+            #card2 { order: 3; }
+            #card3 { order: 4; }
+            #card4 { order: 5; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="sidebar-header" style="align-items: center; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <img src="flavicon.png" alt="Logo" style="width: 38px; height: 38px; object-fit: contain; background: transparent;">
+                <h3 class="sidebar-title" style="font-size: 1.05rem;">CNS Variant Builder</h3>
+            </div>
+            <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()">☀️ Light Mode</button>
+        </div>
+
+        <div class="form-group">
+            <label>Gene Selection Mode</label>
+            <div class="radio-group" style="flex-direction: row; gap: 15px; margin-top: 2px; margin-bottom: 4px;">
+                <label class="radio-option"><input type="radio" name="geneMode" value="preset" checked onclick="toggleGeneMode('preset')"> Presets</label>
+                <label class="radio-option"><input type="radio" name="geneMode" value="custom" onclick="toggleGeneMode('custom')"> CNS Gene Search</label>
+            </div>
+        </div>
+
+        <!-- Preset select -->
+        <div class="form-group" id="presetGeneGroup">
+            <label for="geneSelector">1. Target Gene (Preset)</label>
+            <select id="geneSelector" onchange="loadPresetGene()"></select>
+        </div>
+
+        <!-- Custom gene search -->
+        <div class="form-group" id="customGeneGroup" style="display: none;">
+            <label for="customGeneInput">1. Target Gene Symbol (Custom)</label>
+            <div style="display: flex; gap: 8px;">
+                <input type="text" id="customGeneInput" value="EGFR" placeholder="e.g. EGFR, TERT, SMARCB1">
+                <button class="btn-fetch" onclick="fetchCustomGene()" style="padding: 10px 14px;">Find</button>
+            </div>
+        </div>
+
+        <div class="info-box" id="geneInfo"></div>
+
+        <div class="form-group">
+            <label for="seqInput">2. Base Sequence (Active Site / Full)</label>
+            <textarea id="seqInput" rows="4"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>3. Mutation Type</label>
+            <div class="radio-group" id="mutationOptions">
+                <label class="radio-option"><input type="radio" name="mutType" value="standard" checked onclick="toggleCustomFields(false)"> <span id="labelStandardMut">Standard Mutation</span></label>
+                <label class="radio-option"><input type="radio" name="mutType" value="custom_point" onclick="toggleCustomFields(true, 'point')"> Custom Point Mutation</label>
+                <label class="radio-option"><input type="radio" name="mutType" value="custom_del" onclick="toggleCustomFields(true, 'del')"> Custom In-Frame Deletion</label>
+                <label class="radio-option"><input type="radio" name="mutType" value="custom_ins" onclick="toggleCustomFields(true, 'ins')"> Custom In-Frame Insertion</label>
+                <label class="radio-option"><input type="radio" name="mutType" value="wt" onclick="toggleCustomFields(false)"> Wild-Type (No Mutation)</label>
+            </div>
+        </div>
+
+        <!-- Custom mutation builder fields -->
+        <div id="customInputs" style="display: none; flex-direction: column; gap: 12px; border-left: 2px solid #3b82f6; padding-left: 10px; margin-top: 5px;">
+            <div id="pointFields" class="form-group">
+                <label for="mutPos">Mutation Position (1-indexed)</label>
+                <input type="number" id="mutPos" min="1" value="46">
+                <label for="mutRes">Target Residue (1-letter code)</label>
+                <input type="text" id="mutRes" maxlength="1" value="H" style="text-transform: uppercase;">
+            </div>
+            <div id="delFields" class="form-group" style="display: none;">
+                <label for="delStart">Deletion Start Position (1-indexed)</label>
+                <input type="number" id="delStart" min="1" value="46">
+                <label for="delLen">Deletion Length</label>
+                <input type="number" id="delLen" min="1" value="3">
+            </div>
+            <div id="insFields" class="form-group" style="display: none;">
+                <label for="insPos">Insert After Position (1-indexed)</label>
+                <input type="number" id="insPos" min="1" value="46">
+                <label for="insSeq">Insert Residues</label>
+                <input type="text" id="insSeq" value="AAA" style="text-transform: uppercase;">
+            </div>
+        </div>
+
+        <!-- Co-occurring Biomarkers & CNVs for Precision Classification -->
+        <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 5px;">
+            <label>4. Co-occurring Biomarkers & CNVs</label>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 5px;">
+                <label style="font-size: 0.72rem; display: flex; justify-content: space-between; align-items: center; color: var(--text-secondary); font-weight: bold;">
+                    <span>ATRX Status</span>
+                    <select id="atrxStatus" style="width: 140px; padding: 4px 8px; font-size: 0.8rem; height: 32px;" onchange="runAnalysis()">
+                        <option value="retained">Retained (WT)</option>
+                        <option value="lost">Lost (Mutant)</option>
+                    </select>
+                </label>
+                <label style="font-size: 0.72rem; display: flex; justify-content: space-between; align-items: center; color: var(--text-secondary); font-weight: bold;">
+                    <span>1p/19q Codeletion</span>
+                    <select id="codelStatus" style="width: 140px; padding: 4px 8px; font-size: 0.8rem; height: 32px;" onchange="runAnalysis()">
+                        <option value="intact">Intact</option>
+                        <option value="codeleted">Co-deleted</option>
+                    </select>
+                </label>
+                <label style="font-size: 0.72rem; display: flex; justify-content: space-between; align-items: center; color: var(--text-secondary); font-weight: bold;">
+                    <span>CDKN2A/B Deletion</span>
+                    <select id="cdknStatus" style="width: 140px; padding: 4px 8px; font-size: 0.8rem; height: 32px;" onchange="runAnalysis()">
+                        <option value="intact">Intact</option>
+                        <option value="homo_deleted">Homozygous Del</option>
+                    </select>
+                </label>
+                <label style="font-size: 0.72rem; display: flex; justify-content: space-between; align-items: center; color: var(--text-secondary); font-weight: bold;">
+                    <span>EGFR Amplification</span>
+                    <select id="egfrAmpStatus" style="width: 140px; padding: 4px 8px; font-size: 0.8rem; height: 32px;" onchange="runAnalysis()">
+                        <option value="normal">Normal</option>
+                        <option value="amplified">Amplified</option>
+                    </select>
+                </label>
+                <label style="font-size: 0.72rem; display: flex; justify-content: space-between; align-items: center; color: var(--text-secondary); font-weight: bold;">
+                    <span>TERT Promoter Mutation</span>
+                    <select id="tertStatus" style="width: 140px; padding: 4px 8px; font-size: 0.8rem; height: 32px;" onchange="runAnalysis()">
+                        <option value="wildtype">Wild-type</option>
+                        <option value="mutant">Mutant</option>
+                    </select>
+                </label>
+            </div>
+        </div>
+
+        <button class="btn-run" onclick="runAnalysis()">🚀 Run AI Analysis</button>
+        <button class="btn-download" onclick="downloadReport()">💾 Download Clinical Report</button>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        <div class="header-section">
+            <div class="header-title-group">
+                <div style="display: flex; align-items: center; gap: 18px;">
+                    <img src="flavicon.png" alt="Logo" style="height: 64px; width: auto; object-fit: contain; background: transparent;">
+                    <h1 class="header-title" style="font-size: 3.3rem; margin: 0; line-height: 64px;">NeuroGeno3D</h1>
+                </div>
+                <div class="header-subtitle" style="margin-top: 6px;">Genomic Variant Analyser and Decision Support Tool</div>
+                <div class="header-caption">Precision molecular decision support systems aligned strictly with the WHO CNS 5th Edition (2021) guidelines.</div>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+                <div class="header-badge">WHO CNS 2021 Compliant</div>
+                <div class="api-status-badge"><span class="api-status-dot"></span> ClinVar & PubMed Connected</div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- 3D Visualizer block -->
+            <div class="report-card" id="visCard" style="padding: 16px; border-radius: 16px;">
+                <div class="card-header" style="margin-bottom: 12px; border-bottom: none; padding-bottom: 0; justify-content: space-between;">
+                    <span>🧬 3D Molecular Target Visualizer</span>
+                    <div style="font-size: 0.72rem; font-weight: bold; color: #10b981; background: rgba(16,185,129,0.1); padding: 4px 8px; border-radius: 4px;" id="structureSourceText">Structure Source: RCSB PDB</div>
+                </div>
+                
+                <div style="position: relative; width: 100%; height: 400px;">
+                    <div class="mol-viewer" id="gldiv" style="height: 100%; width: 100%;"></div>
+                    
+                    <!-- High-impact static overlay pointer targeting centered mutation site -->
+                    <div id="visOverlayLabel" style="position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); pointer-events: none; transition: opacity 0.3s ease; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 10;">
+                        <div style="background: rgba(239, 68, 68, 0.95); color: #ffffff; padding: 6px 12px; border-radius: 6px; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); border: 1px solid rgba(255,255,255,0.25); white-space: nowrap; letter-spacing: 0.5px;">
+                            📍 Mutation Residue
+                        </div>
+                        <div style="width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 10px solid rgba(239, 68, 68, 0.95); filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));"></div>
+                    </div>
+                </div>
+                
+                <div class="visualizer-toolbar">
+                    <div class="toolbar-info">
+                        <span><strong>Presentation Mode:</strong> Cartoon Style</span>
+                        <span>•</span>
+                        <span>Secondary Structure Coloring</span>
+                    </div>
+                    <button id="spinBtn" class="toolbar-btn" onclick="toggleSpin()">🔄 Auto Spin</button>
+                </div>
+                
+                <div class="viewer-legend">🔴 Mutated position highlighted in RED. Double-click or drag to rotate. Scroll to zoom.</div>
+            </div>
+
+            <!-- Card 1: Classification -->
+            <div class="report-card" id="card1">
+                <div class="card-header">🏷️ 1. Variant Classification Summary</div>
+                <div class="card-body" id="card1Body"></div>
+            </div>
+
+            <!-- Card 2: Molecular Impact -->
+            <div class="report-card card-molecular" id="card2">
+                <div class="card-header">⚡ 2. Molecular & Structural Impact</div>
+                <div class="card-body" id="card2Body"></div>
+            </div>
+
+            <!-- Card 3: Clinical Relevance -->
+            <div class="report-card card-relevance" id="card3">
+                <div class="card-header">📖 3. Clinical Relevance & WHO Diagnosis</div>
+                <div class="card-body" id="card3Body"></div>
+            </div>
+
+            <!-- Card 4: PubMed Search -->
+            <div class="report-card card-pubmed" id="card4">
+                <div class="card-header">📚 4. PubMed Literature & Evidence Search</div>
+                <div class="card-body" id="card4Body"></div>
+            </div>
+
+            <!-- Card 5: Pathway Network Explorer -->
+            <div class="report-card" id="card5" style="grid-column: span 2;">
+                <div class="card-header">🧬 5. Interactive Pathway Network & Target Explorer</div>
+                <div class="card-body" id="card5Body">
+                    <div id="pathwayList"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="footer">
+            <strong>Research and Education Use Only.</strong> This application retrieves verified molecular classifications and guidelines from standard, peer-reviewed biomedical resources (including WHO CNS5, ClinVar, PubMed, KEGG, Reactome, NCCN, and EANO). However, because this integrated software platform has not undergone human clinical trials, any novel, rare, or computationally predicted variants must be validated by certified diagnostic assays.
+            <div class="footer-credit">Developer: Dr. Rijhul Lahariya &bull; Contact: dr.rijhullahariya@gmail.com</div>
+        </div>
+    </div>
+
+    <!-- JS Logic -->
+    <script>
+        const AA_MAP = {
+            'A': 'Ala', 'R': 'Arg', 'N': 'Asn', 'D': 'Asp', 'C': 'Cys',
+            'Q': 'Gln', 'E': 'Glu', 'G': 'Gly', 'H': 'His', 'I': 'Ile',
+            'L': 'Leu', 'K': 'Lys', 'M': 'Met', 'F': 'Phe', 'P': 'Pro',
+            'S': 'Ser', 'T': 'Thr', 'W': 'Trp', 'Y': 'Tyr', 'V': 'Val'
+        };
+
+        const APPROVED_CNS_GENES = [
+            "IDH1", "IDH2", "BRAF", "H3-3A", "H3C2", "TP53", "EGFR", "TERT", 
+            "SMARCB1", "SMARCA4", "ATRX", "CDKN2A", "CDKN2B", "PTEN", 
+            "CIC", "FUBP1", "CTNNB1", "NF1", "TSC1", "TSC2"
+        ];
+
+        const GENE_DB = {
+            "IDH1": {
+                "full_name": "Isocitrate Dehydrogenase 1",
+                "uniprot": "O75874",
+                "wild_type_seq": "MSKKISGGSVVEMQGDEMTRIIWELIKEKLIFPYVELDLHSYDLGIENRDATNDQVTKDAAEAIKKHNVGVKCATITPDEKRVEEFKLKQMWKSPNGTIRNILGGTVFREAIICKNIPRLVSGWVKPIIIGRHAYGDQYRATDFVVPGPGKVEITYTPSDGTQKVTYLVHNFEEGGGVAMGMYNQDKSIEDFAHSSFQMALSKGWPLYLSTKNTILKKYDGRFKDIFQEIYDKQYKSQFEAQKIWYEHRLIDDMVAQAMKSEGGFIWACKNYDGDVQSDSVAQGYGSLGMMTSVLVCPDGKTVEAEAAHGTVTRHYRMYQKGQETSTNPIASIFAWTRGLAHRAKLDNNKELAFFANALEEVSIETIEAGFMTKDLAACIKGLPNVQRSDYLNTFEFMDKLGENLKIKLAQAKL",
+                "default_mut_pos": 131,
+                "default_mut_type": "Point Mutation (R132H)",
+                "mut_label": "c.395G>A (p.Arg132His / R132H)",
+                "pathogenicity": 0.98,
+                "classification": "Pathogenic",
+                "molecular_impact": `<ul>
+                    <li><strong>Active Site Disruption:</strong> Alters the hydrophilic isocitrate binding pocket geometry.</li>
+                    <li><strong>Neomorphic Activity:</strong> Induces enzymatic gain-of-function converting alpha-ketoglyutarate (α-KG) into the oncometabolite <strong>2-hydroxyglutarate (2-HG)</strong>.</li>
+                    <li><strong>Epigenetic Alterations:</strong> 2-HG accumulation inhibits histone demethylases and TET family DNA methylases, causing global DNA hypermethylation.</li>
+                </ul>`,
+                "who_guideline": `<ul>
+                    <li><strong>WHO Classification (CNS 2021):</strong> Astrocytoma, IDH-mutant, WHO Grade 2/3/4 or Oligodendroglioma, IDH-mutant & 1p/19q-codeleted.</li>
+                    <li><strong>Differential Diagnosis:</strong> Standard marker to rule out <em>Glioblastoma, IDH-wildtype, WHO Grade 4</em>.</li>
+                </ul>`,
+                "pdb_id": "1T0L",
+                "mut_pos_in_pdb": 132,
+                "mut_code": "R132H"
+            },
+            "IDH2": {
+                "full_name": "Isocitrate Dehydrogenase 2 (Mitochondrial)",
+                "uniprot": "P48735",
+                "wild_type_seq": "MAGYLRVVRSLCRASGSRPAWAPAALTAPTSQEQPRRHYADKRIKVAKPVVEMDGDEMTRIIWQFIKEKLILPHVDIQLKYFDLGLPNRDQTDDQVTIDSALATQKYSVAVKCATITPDEARVEEFKLKKMWKSPNGTIRNILGGTVFREPIICKNIPRLVPGWTKPITIGRHAHGDQYKATDFVADRAGTFKMVFTPKDGSGVKEWEVYNFPAGGVGMGMYNTDESISGFAHSCFQYAIQKKWPLYMSTKNTILKAYDGRFKDIFQEIFDKHYKTDFDKNKIWYEHRLIDDMVAQVLKSSGGFVWACKNYDGDVQSDILAQGFGSLGLMTSVLVCPDGKTIEAEAAHGTVTRHYREHQKGRPTSTNPIASIFAWTRGLEHRGKLDGNQDLIRFAQMLEKVCVETVESGAMTKDLAGCIHGLSNVKLNEHFLNTTDFLDTIKSNLDRALGRQ",
+                "default_mut_pos": 171,
+                "default_mut_type": "Point Mutation (R172K)",
+                "mut_label": "c.515G>A (p.Arg172Lys / R172K)",
+                "pathogenicity": 0.96,
+                "classification": "Pathogenic",
+                "molecular_impact": `<ul>
+                    <li><strong>Mitochondrial Disruption:</strong> Alters mitochondrial active site topology for isocitrate.</li>
+                    <li><strong>Oncometabolite Synthesis:</strong> Catalyzes the reduction of alpha-ketoglyutarate to <strong>D-2-hydroxyglutarate (D-2-HG)</strong>.</li>
+                    <li><strong>Cellular Block:</strong> Accumulation of D-2-HG halts cellular differentiation and drives oncogenesis.</li>
+                </ul>`,
+                "who_guideline": `<ul>
+                    <li><strong>WHO Classification (CNS 2021):</strong> Astrocytoma, IDH-mutant, WHO Grade 2/3/4 or Oligodendroglioma, IDH-mutant & 1p/19q-codeleted.</li>
+                    <li><strong>Clinical Relevance:</strong> Analogous diagnosis value to IDH1, but occurs in ~10% of IDH-mutant gliomas.</li>
+                </ul>`,
+                "pdb_id": "5L5E",
+                "mut_pos_in_pdb": 172,
+                "mut_code": "R172K"
+            },
+            "BRAF": {
+                "full_name": "B-Raf Proto-Oncogene, Serine/Threonine Kinase",
+                "uniprot": "P15056",
+                "wild_type_seq": "MAALSGGGGGGAEPGQALFNGDMEPEAGAGAGAAASSAADPAIPEEVWNIKQMIKLTQEHIEALLDKFGGEHNPPSIYLEAYEEYTSKLDALQQREQQLLESLGNGTDFSVSSSASMDTVTSSSSSSLSVLPSSLSVFQNPTDVARSNPKSPQKPIVRVFLPNKQRTVVPARCGVTVRDSLKKALMMRGLIPECCAVYRIQDGEKKPIGWDTDISWLTGEELHVEVLENVPLTTHNFVRKTFFTLAFCDFCRKLLFQGFRCQTCGYKFHQRCSTEVPLMCVNYDQLDLLFVSKFFEHHPIPQEEASLAETALTSGSSPSAPASDSIGPQILTSPSPSKSIPIPQPFRPADEDHRNQFGQRDRSSSAPNVHINTIEPVNIDDLIRDQGFRGDGGSTTGLSATPPASLPGSLTNVKALQKSPGPQRERKSSSSSEDRNRMKTLGRRDSSDDWEIPDGQITVGQRIGSGSFGTVYKGKWHGDVAVKMLNVTAPTPQQLQAFKNEVGVLRKTRHVNILLFMGYSTKPQLAIVTQWCEGSSLYHHLHIIETKFEMIKLIDIARQTAQGMDYLHAKSIIHRDLKSNNIFLHEDLTVKIGDFGLATVKSRWSGSHQFEQLSGSILWMAPEVIRMQDKNPYSFQSDVYAFGIVLYELMTGQLPYSNINNRDQIIFMVGRGYLSPDLSKVRSNCPKAMKRLMAECLKKKRDERPLFPQILASIELLARSLPKIHRSASEPSLNRAGFQTEDFSLYACASPKTPIQAGGYGAFPVH",
+                "default_mut_pos": 599,
+                "default_mut_type": "Point Mutation (V600E)",
+                "mut_label": "c.1799T>A (p.Val600Glu / V600E)",
+                "pathogenicity": 0.99,
+                "classification": "Pathogenic",
+                "molecular_impact": `<ul>
+                    <li><strong>Activation Loop Mimicry:</strong> Substitutes hydrophobic Valine with negatively charged Glutamate, mimicking activating phosphorylation.</li>
+                    <li><strong>MAPK Hyperactivation:</strong> Drives constitutive, RAS-independent monomeric activation of the MEK/ERK downstream kinase pathway.</li>
+                </ul>`,
+                "who_guideline": `<ul>
+                    <li><strong>WHO Classification (CNS 2021):</strong> Pleomorphic Xanthoastrocytoma (PXA, Grade 2/3), Ganglioglioma (Grade 1), or Pediatric-type diffuse low-grade glioma.</li>
+                    <li><strong>Significance:</strong> Standard hallmark for pediatric glial/glioneuronal tumors.</li>
+                </ul>`,
+                "pdb_id": "3Q4C",
+                "mut_pos_in_pdb": 600,
+                "mut_code": "V600E"
+            },
+            "TP53": {
+                "full_name": "Tumor Protein p53",
+                "uniprot": "P04637",
+                "wild_type_seq": "MEEPQSDPSVEPPLSQETFSDLWKLLPENNVLSPLPSQAMDDLMLSPDDIEQWFTEDPGPDEAPRMPEAAPPVAPAPAAPTPAAPAPAPSWPLSSSVPSQKTYQGSYGFRLGFLHSGTAKSVTCTYSPALNKMFCQLAKTCPVQLWVDSTPPPGTRVRAMAIYKQSQHMTEVVRRCPHHERCSDSDGLAPPQHLIRVEGNLRVEYLDDRNTFRHSVVVPYEPPEVGSDCTTIHYNYMCNSSCMGGMNRRPILTIITLEDSSGNLLGRNSFEVRVCACPGRDRRTEEENLRKKGEPHHELPPGSTKRALPNNTSSSPQPKKKPLDGEYFTLQIRGRERFEMFRELNEALELKDAQAGKEPGGSRAHSSHLKSKKGQSTSRHKKLMFKTEGPDSD",
+                "default_mut_pos": 272,
+                "default_mut_type": "Point Mutation (R273H)",
+                "mut_label": "c.818G>A (p.Arg273His / R273H)",
+                "pathogenicity": 0.95,
+                "classification": "Pathogenic",
+                "molecular_impact": `<ul>
+                    <li><strong>DNA Binding Failure:</strong> Mutates direct contact residue R273, eliminating protein interaction with the DNA major groove.</li>
+                    <li><strong>Checkpoint Evasion:</strong> Prevents transcriptional activation of downstream targets (p21, BAX), disrupting G1 arrest and apoptosis.</li>
+                </ul>`,
+                "who_guideline": `<ul>
+                    <li><strong>WHO Classification (CNS 2021):</strong> Essential co-marker for Astrocytoma, IDH-mutant (where TP53 and ATRX mutation are standard diagnostic hallmarks).</li>
+                </ul>`,
+                "pdb_id": "1TUP",
+                "mut_pos_in_pdb": 273,
+                "mut_code": "R273H"
+            },
+            "H3-3A": {
+                "full_name": "H3.3 Histone A",
+                "uniprot": "P84243",
+                "wild_type_seq": "MARTKQTARKSTGGKAPRKQLATKAARKSAPSTGGVKKPHRYRPGTVALREIRRYQKSTELLIRKLPFQRLVREIAQDFKTDLRFQSAAIGALQEASEAYLVGLFEDTNLCAIHAKRVTIMPKDIQLARRIRGERA",
+                "default_mut_pos": 26,
+                "default_mut_type": "Point Mutation (K27M)",
+                "mut_label": "c.83A>T (p.Lys27Met / K27M)",
+                "pathogenicity": 0.99,
+                "classification": "Pathogenic",
+                "molecular_impact": `<ul>
+                    <li><strong>Epigenetic Block:</strong> K27M mutation behaves in a dominant-negative manner, binding and inhibiting the active site of the Polycomb Repressive Complex 2 (PRC2).</li>
+                    <li><strong>Global Methylation Loss:</strong> Drives massive global loss of the repressive H3K27me3 histone mark, inducing aberrant gene transcription.</li>
+                </ul>`,
+                "who_guideline": `<ul>
+                    <li><strong>WHO Classification (CNS 2021):</strong> Diffuse Midline Glioma, H3 K27M-altered, WHO Grade 4. Aggressive midline tumor located in pons, thalamus, or spinal cord.</li>
+                </ul>`,
+                "pdb_id": "4HGA",
+                "mut_pos_in_pdb": 27,
+                "mut_code": "K27M"
+            }
+        };
+
+        // Theme Toggle
+        let currentTheme = "dark";
+        function toggleTheme() {
+            currentTheme = currentTheme === "dark" ? "light" : "dark";
+            document.body.setAttribute("data-theme", currentTheme);
+            const btn = document.getElementById("themeBtn");
+            btn.innerHTML = currentTheme === "dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
+        }
+
+        // Global state for active query
+        let activeGeneSymbol = "IDH1";
+        let activeProteinName = "Isocitrate Dehydrogenase 1";
+        let activeUniprotId = "O75874";
+        let activeSequence = "";
+        let finalReportText = "";
+        let activeLabel = "p.Arg132His (R132H)";
+
+        // Initialize selectors
+        window.onload = function() {
+            const selector = document.getElementById("geneSelector");
+            for (let g in GENE_DB) {
+                let opt = document.createElement("option");
+                opt.value = g;
+                opt.textContent = g;
+                selector.appendChild(opt);
+            }
+            loadPresetGene();
+            runAnalysis();
+        };
+
+        function toggleGeneMode(mode) {
+            document.getElementById("presetGeneGroup").style.display = mode === "preset" ? "flex" : "none";
+            document.getElementById("customGeneGroup").style.display = mode === "custom" ? "flex" : "none";
+            if (mode === "preset") {
+                loadPresetGene();
+            } else {
+                fetchCustomGene();
+            }
+        }
+
+        function loadPresetGene() {
+            const geneKey = document.getElementById("geneSelector").value;
+            const info = GENE_DB[geneKey];
+            activeGeneSymbol = geneKey;
+            activeProteinName = info.full_name;
+            activeUniprotId = info.uniprot;
+            activeSequence = info.wild_type_seq;
+
+            document.getElementById("geneInfo").innerHTML = `<strong>Gene:</strong> ${info.full_name}<br><strong>UniProt:</strong> ${info.uniprot}`;
+            document.getElementById("seqInput").value = info.wild_type_seq;
+
+            document.getElementById("labelStandardMut").textContent = "Standard " + info.default_mut_type;
+            document.querySelector('input[name="mutType"][value="standard"]').checked = true;
+            toggleCustomFields(false);
+
+            const defaultPos = info.default_mut_pos + 1;
+            document.getElementById("mutPos").value = defaultPos;
+            document.getElementById("delStart").value = defaultPos;
+            document.getElementById("insPos").value = defaultPos;
+        }
+
+        async function fetchCustomGene() {
+            const symbol = document.getElementById("customGeneInput").value.trim().toUpperCase();
+            if (!symbol) return;
+
+            // Strict Validation for WHO CNS 2021 biomarkers
+            if (!APPROVED_CNS_GENES.includes(symbol)) {
+                document.getElementById("geneInfo").innerHTML = `<span style='color: #ef4444;'>Error: ${symbol} is not an approved WHO CNS 2021 neuro-oncology biomarker. Refusing query.</span>`;
+                return;
+            }
+            
+            document.getElementById("geneInfo").innerHTML = "Searching UniProt...";
+            try {
+                let res = await fetch(`https://rest.uniprot.org/uniprotkb/search?query=gene_exact:${symbol}+AND+organism_id:9606+AND+reviewed:true&format=json`);
+                if (res.ok) {
+                    let data = await res.json();
+                    let results = data.results || [];
+                    if (results.length > 0) {
+                        let entry = results[0];
+                        activeGeneSymbol = symbol;
+                        activeUniprotId = entry.primaryAccession;
+                        activeProteinName = entry.proteinDescription?.recommendedName?.fullName?.value || "Unknown CNS Protein";
+                        activeSequence = entry.sequence?.value || "";
+
+                        document.getElementById("geneInfo").innerHTML = `<strong>Gene:</strong> ${activeProteinName}<br><strong>UniProt:</strong> ${activeUniprotId}`;
+                        document.getElementById("seqInput").value = activeSequence;
+                        document.getElementById("labelStandardMut").textContent = "Standard Mutation (R132H/T790M)";
+                        
+                        document.getElementById("mutPos").value = 1;
+                        document.getElementById("delStart").value = 1;
+                        document.getElementById("insPos").value = 1;
+                        return;
+                    }
+                }
+            } catch (e) {}
+            
+            document.getElementById("geneInfo").innerHTML = "<span style='color: #ef4444;'>Gene not found in UniProt. Using EGFR fallback.</span>";
+            activeGeneSymbol = "EGFR";
+            activeUniprotId = "P00533";
+            activeProteinName = "Epidermal Growth Factor Receptor";
+            activeSequence = "MRPSGTAGAALLALLAALCPASRALEEKKVCQGTSNKLTQLGTFEDHFLSLQRMFNNCEVVLGNLEITYVQRNYDLSFLKTIQEVAGYVLIALNTVERIPLENLQIIRGNMYYENSYALAVLSNYDANKTGLKELPMRNLQEILHGAVRFSNNPALCNVESIQWRDIVSSDFLSNMSMDFQNHLGSCQKCDPSCPNGSCWGAGEENCQKLTKIICAQQCSGRCRGKSPSDCCHNQCAAGCTGPRESDCLVCRKFRDEATCKDTCPPLMLYNPTTYQMDVNPEGKYSFGATCVKKCPRNYVVTDHGSCVRACGADSYEMEEDGVRKCKKCEGPCRKVCNGIGIGEFKDSLSINATNIKHFKNCTSISGDLHILPVAFRGDSFTHTPPLDPQELDILKTVKEITGFLLIQAWPENRTDLHAFENLEIIRGRTKQHGQFSLAVVSLNITSLGLRSLKEISDGDVIISGNKNLCYANTINWKKLFGTSGQKTKIISNRGENSCKATGQVCHALCSPEGCWGPEPRDCVSCRNVSRGRECVDKCNLLEGEPREFVENSECIQCHPECLPQAMNITCTGRGPDNCIQCAHYIDGPHCVKTCPAGVMGENNTLVWKYADAGHVCHLCHPNCTYGCTGPGLEGCPTNGPKIPSIATGMVGALLLLLVVALGIGLFMRRRHIVRKRTLRRLLQERELVEPLTPSGEAPNQALLRILKETEFKKIKVLGSGAFGTVYKGLWIPEGEKVKIPVAIKELREATSPKANKEILDEAYVMASVDNPHVCRLLGICLTSTVQLITQLMPFGCLLDYVREHKDNIGSQYLLNWCVQIAKGMNYLEDRRLVHRDLAARNVLVKTPQHVKITDFGLAKLLGAEEKEYHAEGGKVPIKWMALESILHRIYTHQSDVWSYGVTVWELMTFGSKPYDGIPASEISSILEKGERLPQPPICTIDVYMIMVKCWMIDADSRPKFRELIIEFSKMARDPQRYLVIQGDERMHLPSPTDSNFYRALMDEEDMDDVVDADEYLIPQQGFFSSPSTSRTPLLSSLSATSNNSTVACIDRNGLQSCPIKEDSFLQRYSSDPTGALTEDSIDDTFLPVPEYINQSVPKRPAGSVQNPVYHNQPLNPAPSRDPHYQDPHSTAVGNPEYLNTVQPTCVNSTFDSPAHWAQKGSHQISLDNPDYQQDFFPKEAKPNGIFKGSTAENAEYLRVAPQSSEFIGA";
+            document.getElementById("seqInput").value = activeSequence;
+        }
+
+        function toggleCustomFields(show, mode) {
+            const panel = document.getElementById("customInputs");
+            panel.style.display = show ? "flex" : "none";
+            if (show) {
+                document.getElementById("pointFields").style.display = mode === "point" ? "flex" : "none";
+                document.getElementById("delFields").style.display = mode === "del" ? "flex" : "none";
+                document.getElementById("insFields").style.display = mode === "ins" ? "flex" : "none";
+            }
+        }
+
+        let glviewer = null;
+        let isSpinning = false;
+        let highlightedResidues = [];
+        let isOfflineMode = false;
+
+        async function runAnalysis() {
+            const mutType = document.querySelector('input[name="mutType"]:checked').value;
+            const seqVal = document.getElementById("seqInput").value.trim().toUpperCase();
+
+            let mutatedSeq = seqVal.split("");
+            let isMutation = true;
+            activeLabel = "";
+            let isHotspot = false;
+            let mutationPosition = 1;
+            highlightedResidues = [];
+
+            const isPreset = document.querySelector('input[name="geneMode"]:checked').value === "preset";
+            const presetInfo = isPreset ? GENE_DB[activeGeneSymbol] : null;
+
+            if (mutType === "standard") {
+                isMutation = true;
+                isHotspot = true;
+                if (presetInfo) {
+                    activeLabel = presetInfo.mut_label;
+                    highlightedResidues = [presetInfo.mut_pos_in_pdb];
+                    mutationPosition = presetInfo.default_mut_pos + 1;
+                } else {
+                    activeLabel = "p.Thr790Met (T790M)";
+                    highlightedResidues = [790];
+                    mutationPosition = 790;
+                }
+            } else if (mutType === "wt") {
+                isMutation = false;
+                isHotspot = false;
+                activeLabel = "Wild-Type Baseline";
+            } else if (mutType === "custom_point") {
+                const cPos = parseInt(document.getElementById("mutPos").value);
+                const cRes = document.getElementById("mutRes").value.toUpperCase();
+                const startAA = seqVal[cPos - 1] || "";
+                
+                if (cPos <= seqVal.length && cRes) {
+                    mutatedSeq[cPos - 1] = cRes;
+                    const start3 = AA_MAP[startAA] || startAA;
+                    const end3 = AA_MAP[cRes] || cRes;
+                    activeLabel = `p.${start3}${cPos}${end3} (p.${startAA}${cPos}${cRes})`;
+                    isMutation = true;
+                    highlightedResidues = [cPos];
+                    mutationPosition = cPos;
+
+                    if (presetInfo) {
+                        if (activeGeneSymbol === "IDH1" && cPos === 132 && cRes === "H") isHotspot = true;
+                        if (activeGeneSymbol === "IDH2" && cPos === 172 && cRes === "K") isHotspot = true;
+                        if (activeGeneSymbol === "BRAF" && cPos === 600 && cRes === "E") isHotspot = true;
+                        if (activeGeneSymbol === "TP53" && cPos === 273 && cRes === "H") isHotspot = true;
+                        if (activeGeneSymbol === "H3-3A" && cPos === 27 && cRes === "M") isHotspot = true;
+                    }
+                }
+            } else if (mutType === "custom_del") {
+                const delStart = parseInt(document.getElementById("delStart").value);
+                const delLen = parseInt(document.getElementById("delLen").value);
+                
+                if (delStart <= seqVal.length && delLen > 0) {
+                    mutatedSeq.splice(delStart - 1, delLen);
+                    const startAA = seqVal[delStart - 1] || "";
+                    const endAA = seqVal[delStart + delLen - 2] || "";
+                    const start3 = AA_MAP[startAA] || startAA;
+                    const end3 = AA_MAP[endAA] || endAA;
+                    activeLabel = `p.${start3}${delStart}_${end3}${delStart + delLen - 1}del`;
+                    isMutation = true;
+                    highlightedResidues = [delStart, delStart + delLen - 1];
+                    mutationPosition = delStart;
+                }
+            } else if (mutType === "custom_ins") {
+                const insPos = parseInt(document.getElementById("insPos").value);
+                const insSeq = document.getElementById("insSeq").value.toUpperCase();
+                
+                if (insPos <= seqVal.length && insSeq) {
+                    mutatedSeq.splice(insPos, 0, ...insSeq.split(""));
+                    const f1_aa = seqVal[insPos - 1] || "";
+                    const f2_aa = seqVal[insPos] || "";
+                    const f1_aa_3 = AA_MAP[f1_aa] || f1_aa;
+                    const f2_aa_3 = AA_MAP[f2_aa] || f2_aa;
+                    const insSeq3 = insSeq.split("").map(r => AA_MAP[r] || r).join("");
+                    
+                    if (f2_aa) {
+                        activeLabel = `p.${f1_aa_3}${insPos}_${f2_aa_3}${insPos+1}ins${insSeq3}`;
+                    } else {
+                        activeLabel = `p.${f1_aa_3}${insPos}ins${insSeq3}`;
+                    }
+                    isMutation = true;
+                    highlightedResidues = [insPos];
+                    mutationPosition = insPos;
+                }
+            }
+
+            const cleanSequence = mutatedSeq.join("");
+
+            // Setup loading view in cards
+            document.getElementById("card1Body").innerHTML = "Searching ClinVar database...";
+            document.getElementById("card4Body").innerHTML = "Searching PubMed...";
+
+            let cleanMutationName = isHotspot && presetInfo ? presetInfo.mut_code : activeLabel.split(" ")[0].replace(/^p\./, "");
+            
+            let clinvarPromise = getLiveClinvar(activeGeneSymbol, cleanMutationName);
+            let pubmedPromise = getLivePubmed(activeGeneSymbol, cleanMutationName);
+
+            let [clinvarResult, pubmedResult] = await Promise.all([clinvarPromise, pubmedPromise]);
+
+            // 1. Render Classification Card
+            let clinvarSignificance = "Variant of Uncertain Significance (VUS)";
+            let reviewStatus = "No assertions documented";
+            let lastEvaluated = "N/A";
+            let phenotypes = ["None documented in ClinVar"];
+            let chromLoc = "Unknown genomic coordinates";
+            let freqHTML = "No frequency data available in ClinVar.";
+            let badgeClass = "badge-vus";
+
+            if (clinvarResult.success && clinvarResult.data) {
+                let rec = clinvarResult.data;
+                clinvarSignificance = rec.significance;
+                reviewStatus = rec.review_status;
+                lastEvaluated = rec.last_evaluated;
+                phenotypes = rec.phenotypes.length > 0 ? rec.phenotypes : phenotypes;
+                chromLoc = `Chr ${rec.chrom}:${rec.start} (${rec.band})`;
+                
+                if (rec.freqs && rec.freqs.length > 0) {
+                    freqHTML = "<ul>" + rec.freqs.map(f => `<li><strong>${f.source}:</strong> ${f.value}</li>`).join("") + "</ul>";
+                }
+
+                let sigLower = clinvarSignificance.toLowerCase();
+                if (sigLower.includes("pathogenic")) badgeClass = "badge-pathogenic";
+                else if (sigLower.includes("benign")) badgeClass = "badge-benign";
+            } else {
+                if (!isMutation) {
+                    clinvarSignificance = "Benign";
+                    badgeClass = "badge-benign";
+                } else if (isHotspot) {
+                    clinvarSignificance = "Pathogenic";
+                    badgeClass = "badge-pathogenic";
+                }
+            }
+
+            document.getElementById("card1Body").innerHTML = `
+                <p><strong>Gene:</strong> ${activeProteinName} (${activeGeneSymbol})</p>
+                <p><strong>Nomenclature:</strong> <code>${activeLabel}</code></p>
+                <p><strong>Genomic Location (GRCh38):</strong> ${chromLoc}</p>
+                <hr>
+                <p><strong>ClinVar Pathogenicity:</strong> <span class="badge ${badgeClass}">${clinvarSignificance}</span></p>
+                <p><strong>Review Status:</strong> <span style="font-size:0.75rem; font-weight:bold; background:rgba(128,128,128,0.15); padding:2px 6px; border-radius:4px;">${reviewStatus}</span></p>
+                <p><strong>Associated Conditions:</strong> ${phenotypes.join(", ")}</p>
+                <p><strong>Allele Frequency:</strong> ${freqHTML}</p>
+            `;
+
+            // 2. Render Molecular Impact Card
+            let card2HTML = "";
+            if (!isMutation) {
+                card2HTML = "<p><strong>Wild-Type Status:</strong> Standard enzymatic and histone activity is preserved. The wild-type amino acid sequence maintains normal cellular homeostasis and chromatin organization.</p>";
+            } else if (isHotspot && presetInfo) {
+                card2HTML = presetInfo.molecular_impact;
+            } else {
+                let domain = "Active / catalytic domain";
+                let implication = "No active molecular or biochemical assays cataloged in the clinical records.";
+                if (activeGeneSymbol === "TP53") {
+                    if (mutationPosition <= 90) {
+                        domain = "N-terminal transactivation domain (TAD, residues 1-92).";
+                        implication = "Modulates transcriptional activation. Alterations here do not affect direct DNA contacts.";
+                    } else if (mutationPosition > 90 && mutationPosition <= 290) {
+                        domain = "Core DNA-binding domain (DBD, residues 94-292).";
+                        implication = "Variant resides inside core DNA-binding fold but avoids major hot spot residues.";
+                    } else {
+                        domain = "C-terminal tetramerization domain (residues 325-356).";
+                    }
+                }
+                let epigeneticDetails = "";
+                if (activeGeneSymbol === "IDH1" || activeGeneSymbol === "IDH2") {
+                    epigeneticDetails = "Accumulation of oncometabolite 2-hydroxyglutarate (2-HG) competitively inhibits alpha-ketoglutarate-dependent histone demethylases and TET family DNA methylases, establishing a CpG Island Methylator Phenotype (G-CIMP).";
+                } else if (activeGeneSymbol === "H3-3A" || activeGeneSymbol === "H3C2") {
+                    epigeneticDetails = "Disrupts critical histone tail post-translational modification sites. Specifically, histone H3 K27 substitutions inhibit Polycomb Repressive Complex 2 (PRC2) methyltransferase activity, causing global loss of repressive H3K27me3 methylation marks.";
+                } else if (activeGeneSymbol === "ATRX") {
+                    epigeneticDetails = "Disrupts ATRX-DAXX chaperone assembly, causing deposition failure of histone H3.3 at telomeres, leading to chromatin deregulation, telomeric instability, and activation of Alternative Lengthening of Telomeres (ALT).";
+                } else if (activeGeneSymbol === "TP53") {
+                    epigeneticDetails = "Leads to loss of p53-dependent transcriptional activation of chromatin-modifying enzymes, causing downstream epigenetic instability.";
+                } else {
+                    epigeneticDetails = "Alters signaling pathway activity, which downstream modulates phosphorylation and recruitment of histone acetyltransferases/methyltransferases, altering cell-specific gene expression profiles.";
+                }
+
+                card2HTML = `
+                    <p><strong>Structural Domain:</strong> Located in the ${domain}</p>
+                    <p><strong>Predictive Structural Impact:</strong> ${implication}</p>
+                    <p><strong>Epigenetic Consequence:</strong> ${epigeneticDetails}</p>
+                    <p><strong>Interpretation Summary:</strong> Sequence alteration does not match canonical glioma hot spot variants. Clinical significance is computational VUS.</p>
+                `;
+            }
+            document.getElementById("card2Body").innerHTML = card2HTML;
+            
+            // Set initial loading indicator inside Card 5
+            document.getElementById("pathwayList").innerHTML = `<span style="opacity: 0.6; font-size: 0.85rem;">🧬 Querying pathway databases...</span>`;
+
+            // Trigger the Pathway fetch asynchronously so it doesn't block the UI rendering!
+            getLivePathways(activeUniprotId).then(pathways => {
+                // Build a curated, high-fidelity HTML visual representation of the pathway cascade
+                let pathwayDiagramHTML = "";
+                let pName = "";
+                let pDbRef = "";
+                let keggLink = `https://www.kegg.jp/dbget-bin/www_bfind?sub=pathway&keyword=hsa:${activeGeneSymbol}`;
+                let reactomeLink = `https://reactome.org/content/query?q=${activeGeneSymbol}&species=Homo+sapiens&types=Pathway`;
+                
+                if (activeGeneSymbol === "BRAF" || activeGeneSymbol === "EGFR" || activeGeneSymbol === "PTEN" || activeGeneSymbol === "NF1") {
+                    pName = "RTK / RAS / MAPK / PI3K Signaling Network";
+                    pDbRef = "KEGG Pathway: hsa04010 (MAPK) & hsa04151 (PI3K-Akt) | Reactome: R-HSA-5683013";
+                    
+                    pathwayDiagramHTML = `
+                        <div style="background: rgba(15,23,42,0.45); border-radius: 12px; border: 1px solid var(--border-color); padding: 16px; margin-bottom: 15px;">
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <!-- Tier 1: Receptors -->
+                                <div style="display: flex; justify-content: center; gap: 20px; align-items: center;">
+                                    <div style="font-size:0.7rem; opacity:0.5; text-transform:uppercase; width:80px; text-align:right;">Extracellular</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid ${activeGeneSymbol==='EGFR'?'#ef4444':'#38bdf8'}; background: ${activeGeneSymbol==='EGFR'?'rgba(239,68,68,0.15)':'rgba(56,189,248,0.06)'}; font-weight: bold; font-size: 0.8rem; color: #fff; min-width: 80px; text-align: center;">EGFR Receptor</div>
+                                    <div style="font-size: 1.2rem; color: #475569;">|</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid #94a3b8; background: rgba(255,255,255,0.03); font-size: 0.8rem; color: #cbd5e1; min-width: 80px; text-align: center;">PDGFR Receptor</div>
+                                </div>
+                                <div style="text-align: center; color: #475569; font-size: 0.9rem; margin: -4px 0;">⬇️</div>
+                                <!-- Tier 2: Transducers -->
+                                <div style="display: flex; justify-content: center; gap: 20px; align-items: center;">
+                                    <div style="font-size:0.7rem; opacity:0.5; text-transform:uppercase; width:80px; text-align:right;">Cytoplasm</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid #10b981; background: rgba(16,185,129,0.06); font-weight: bold; font-size: 0.8rem; color: #fff; min-width: 60px; text-align: center;">RAS</div>
+                                    <div style="font-size: 1.2rem; color: #475569;">➕</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid ${activeGeneSymbol==='NF1'?'#ef4444':'#94a3b8'}; background: ${activeGeneSymbol==='NF1'?'rgba(239,68,68,0.15)':'rgba(255,255,255,0.03)'}; font-size: 0.8rem; color: #cbd5e1; min-width: 60px; text-align: center;">NF1</div>
+                                    <div style="font-size: 1.2rem; color: #475569;">➕</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid #10b981; background: rgba(16,185,129,0.06); font-size: 0.8rem; color: #cbd5e1; min-width: 60px; text-align: center;">PI3K</div>
+                                    <div style="font-size: 1.2rem; color: #475569;">➕</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid ${activeGeneSymbol==='PTEN'?'#ef4444':'#10b981'}; background: ${activeGeneSymbol==='PTEN'?'rgba(239,68,68,0.15)':'rgba(16,185,129,0.06)'}; font-size: 0.8rem; color: #cbd5e1; min-width: 60px; text-align: center;">PTEN</div>
+                                </div>
+                                <div style="text-align: center; color: #475569; font-size: 0.9rem; margin: -4px 0;">⬇️</div>
+                                <!-- Tier 3: Cascade Kinases -->
+                                <div style="display: flex; justify-content: center; gap: 20px; align-items: center;">
+                                    <div style="font-size:0.7rem; opacity:0.5; text-transform:uppercase; width:80px; text-align:right;">Kinase Chain</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid ${activeGeneSymbol==='BRAF'?'#ef4444':'#38bdf8'}; background: ${activeGeneSymbol==='BRAF'?'rgba(239,68,68,0.15)':'rgba(56,189,248,0.06)'}; font-weight: bold; font-size: 0.8rem; color: #fff; min-width: 60px; text-align: center;">BRAF</div>
+                                    <div style="font-size: 1rem; color: #475569;">➔</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid #38bdf8; background: rgba(56,189,248,0.03); font-size: 0.8rem; color: #cbd5e1; min-width: 60px; text-align: center;">MEK1/2</div>
+                                    <div style="font-size: 1rem; color: #475569;">➔</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid #38bdf8; background: rgba(56,189,248,0.03); font-size: 0.8rem; color: #cbd5e1; min-width: 60px; text-align: center;">ERK1/2</div>
+                                </div>
+                                <div style="text-align: center; color: #475569; font-size: 0.9rem; margin: -4px 0;">⬇️</div>
+                                <!-- Tier 4: Targets -->
+                                <div style="display: flex; justify-content: center; gap: 20px; align-items: center;">
+                                    <div style="font-size:0.7rem; opacity:0.5; text-transform:uppercase; width:80px; text-align:right;">Nucleus</div>
+                                    <div style="padding: 8px 16px; border-radius: 6px; border: 1.5px solid #fb923c; background: rgba(251,146,60,0.1); font-weight: 800; font-size: 0.85rem; color: #fb923c; min-width: 140px; text-align: center; box-shadow: 0 0 10px rgba(251,146,60,0.15);">MYC / FOS Transcription (Proliferation & Survival)</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else if (activeGeneSymbol === "TP53" || activeGeneSymbol === "CDKN2A/B" || activeGeneSymbol === "CDKN2A" || activeGeneSymbol === "CDKN2B") {
+                    pName = "p53 Regulatory Cascade & Cell Cycle Arrest Pathway";
+                    pDbRef = "KEGG Pathway: hsa04115 (p53) & hsa04110 (Cell Cycle) | PathBank: PH000109";
+                    
+                    pathwayDiagramHTML = `
+                        <div style="background: rgba(15,23,42,0.45); border-radius: 12px; border: 1px solid var(--border-color); padding: 16px; margin-bottom: 15px;">
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <!-- Tier 1: Regulators -->
+                                <div style="display: flex; justify-content: center; gap: 20px; align-items: center;">
+                                    <div style="font-size:0.7rem; opacity:0.5; text-transform:uppercase; width:80px; text-align:right;">Tumor Suppression</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid ${activeGeneSymbol==='CDKN2A'?'#ef4444':'#38bdf8'}; background: ${activeGeneSymbol==='CDKN2A'?'rgba(239,68,68,0.15)':'rgba(56,189,248,0.06)'}; font-weight: bold; font-size: 0.8rem; color: #fff; min-width: 80px; text-align: center;">CDKN2A (p16)</div>
+                                    <div style="font-size: 1.2rem; color: #475569;">|</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid ${activeGeneSymbol==='CDKN2B'?'#ef4444':'#94a3b8'}; background: ${activeGeneSymbol==='CDKN2B'?'rgba(239,68,68,0.15)':'rgba(255,255,255,0.03)'}; font-size: 0.8rem; color: #cbd5e1; min-width: 80px; text-align: center;">CDKN2B (p15)</div>
+                                </div>
+                                <div style="text-align: center; color: #475569; font-size: 0.9rem; margin: -4px 0;">⬇️</div>
+                                <!-- Tier 2: The Hub (p53) -->
+                                <div style="display: flex; justify-content: center; gap: 20px; align-items: center;">
+                                    <div style="font-size:0.7rem; opacity:0.5; text-transform:uppercase; width:80px; text-align:right;">Genomic Hub</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid ${activeGeneSymbol==='TP53'?'#ef4444':'#38bdf8'}; background: ${activeGeneSymbol==='TP53'?'rgba(239,68,68,0.15)':'rgba(56,189,248,0.06)'}; font-weight: bold; font-size: 0.85rem; color: #fff; min-width: 100px; text-align: center; box-shadow: 0 0 10px rgba(56,189,248,0.15);">p53 Guardian</div>
+                                    <div style="font-size: 1rem; color: #475569;">❌</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid #94a3b8; background: rgba(255,255,255,0.03); font-size: 0.8rem; color: #cbd5e1; min-width: 80px; text-align: center;">MDM2 Inhibitor</div>
+                                </div>
+                                <div style="text-align: center; color: #475569; font-size: 0.9rem; margin: -4px 0;">⬇️</div>
+                                <!-- Tier 3: Downstream Effectors -->
+                                <div style="display: flex; justify-content: center; gap: 20px; align-items: center;">
+                                    <div style="font-size:0.7rem; opacity:0.5; text-transform:uppercase; width:80px; text-align:right;">Transducers</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid #10b981; background: rgba(16,185,129,0.06); font-size: 0.8rem; color: #cbd5e1; min-width: 70px; text-align: center;">p21 (CDKN1A)</div>
+                                    <div style="font-size: 1rem; color: #475569;">➔</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid #10b981; background: rgba(16,185,129,0.06); font-size: 0.8rem; color: #cbd5e1; min-width: 70px; text-align: center;">BAX / PUMA</div>
+                                    <div style="font-size: 1rem; color: #475569;">➔</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid #10b981; background: rgba(16,185,129,0.06); font-size: 0.8rem; color: #cbd5e1; min-width: 70px; text-align: center;">CDK4/6 Arrest</div>
+                                </div>
+                                <div style="text-align: center; color: #475569; font-size: 0.9rem; margin: -4px 0;">⬇️</div>
+                                <!-- Tier 4: Targets -->
+                                <div style="display: flex; justify-content: center; gap: 20px; align-items: center;">
+                                    <div style="font-size:0.7rem; opacity:0.5; text-transform:uppercase; width:80px; text-align:right;">Outcome</div>
+                                    <div style="padding: 8px 16px; border-radius: 6px; border: 1.5px solid #fb923c; background: rgba(251,146,60,0.1); font-weight: 800; font-size: 0.85rem; color: #fb923c; min-width: 140px; text-align: center; box-shadow: 0 0 10px rgba(251,146,60,0.15);">Cell Cycle Arrest & Apoptosis (Programmed Cell Death)</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else if (activeGeneSymbol === "IDH1" || activeGeneSymbol === "IDH2") {
+                    pName = "Isocitrate Dehydrogenase Neomorphic Metabolism & Epigenetics";
+                    pDbRef = "KEGG Pathway: hsa01100 (Metabolism) | WikiPathways: WP4940";
+                    
+                    pathwayDiagramHTML = `
+                        <div style="background: rgba(15,23,42,0.45); border-radius: 12px; border: 1px solid var(--border-color); padding: 16px; margin-bottom: 15px;">
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <!-- Tier 1: Substrates -->
+                                <div style="display: flex; justify-content: center; gap: 20px; align-items: center;">
+                                    <div style="font-size:0.7rem; opacity:0.5; text-transform:uppercase; width:80px; text-align:right;">Substrate</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid #94a3b8; background: rgba(255,255,255,0.03); font-size: 0.8rem; color: #cbd5e1; min-width: 100px; text-align: center;">Isocitrate</div>
+                                </div>
+                                <div style="text-align: center; color: #475569; font-size: 0.9rem; margin: -4px 0;">⬇️</div>
+                                <!-- Tier 2: Neomorphic Enzyme -->
+                                <div style="display: flex; justify-content: center; gap: 20px; align-items: center;">
+                                    <div style="font-size:0.7rem; opacity:0.5; text-transform:uppercase; width:80px; text-align:right;">Enzymatic Driver</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid #ef4444; background: rgba(239,68,68,0.15); font-weight: bold; font-size: 0.85rem; color: #fff; min-width: 100px; text-align: center; box-shadow: 0 0 10px rgba(239,68,68,0.2);">${activeGeneSymbol} Mutant</div>
+                                </div>
+                                <div style="text-align: center; color: #475569; font-size: 0.9rem; margin: -4px 0;">⬇️</div>
+                                <!-- Tier 3: Oncometabolites -->
+                                <div style="display: flex; justify-content: center; gap: 20px; align-items: center;">
+                                    <div style="font-size:0.7rem; opacity:0.5; text-transform:uppercase; width:80px; text-align:right;">Metabolism</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid #10b981; background: rgba(16,185,129,0.06); font-size: 0.8rem; color: #cbd5e1; min-width: 75px; text-align: center;">Alpha-KG</div>
+                                    <div style="font-size: 1rem; color: #475569;">➔</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid #ef4444; background: rgba(239,68,68,0.12); font-weight: bold; font-size: 0.8rem; color: #fff; min-width: 75px; text-align: center;">2-HG Accumulation</div>
+                                    <div style="font-size: 1rem; color: #475569;">➔</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid #10b981; background: rgba(16,185,129,0.06); font-size: 0.8rem; color: #cbd5e1; min-width: 75px; text-align: center;">TET2 / KDM Block</div>
+                                </div>
+                                <div style="text-align: center; color: #475569; font-size: 0.9rem; margin: -4px 0;">⬇️</div>
+                                <!-- Tier 4: Targets -->
+                                <div style="display: flex; justify-content: center; gap: 20px; align-items: center;">
+                                    <div style="font-size:0.7rem; opacity:0.5; text-transform:uppercase; width:80px; text-align:right;">Outcome</div>
+                                    <div style="padding: 8px 16px; border-radius: 6px; border: 1.5px solid #fb923c; background: rgba(251,146,60,0.1); font-weight: 800; font-size: 0.85rem; color: #fb923c; min-width: 140px; text-align: center; box-shadow: 0 0 10px rgba(251,146,60,0.15);">Global DNA Hypermethylation (G-CIMP Phenotype)</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    pName = "Histone Assembly & Chromatin Remodeling Pathway";
+                    pDbRef = "Reactome: R-HSA-2121650 | WikiPathways: WP5134";
+                    
+                    pathwayDiagramHTML = `
+                        <div style="background: rgba(15,23,42,0.45); border-radius: 12px; border: 1px solid var(--border-color); padding: 16px; margin-bottom: 15px;">
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <!-- Tier 1: Regulators -->
+                                <div style="display: flex; justify-content: center; gap: 20px; align-items: center;">
+                                    <div style="font-size:0.7rem; opacity:0.5; text-transform:uppercase; width:80px; text-align:right;">Chaperone</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid ${activeGeneSymbol==='ATRX'?'#ef4444':'#38bdf8'}; background: ${activeGeneSymbol==='ATRX'?'rgba(239,68,68,0.15)':'rgba(56,189,248,0.06)'}; font-weight: bold; font-size: 0.8rem; color: #fff; min-width: 80px; text-align: center;">ATRX</div>
+                                    <div style="font-size: 1.2rem; color: #475569;">|</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid #94a3b8; background: rgba(255,255,255,0.03); font-size: 0.8rem; color: #cbd5e1; min-width: 80px; text-align: center;">DAXX Chaperone</div>
+                                </div>
+                                <div style="text-align: center; color: #475569; font-size: 0.9rem; margin: -4px 0;">⬇️</div>
+                                <!-- Tier 2: Histones -->
+                                <div style="display: flex; justify-content: center; gap: 20px; align-items: center;">
+                                    <div style="font-size:0.7rem; opacity:0.5; text-transform:uppercase; width:80px; text-align:right;">Nucleosome</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid ${activeGeneSymbol==='H3-3A'?'#ef4444':'#38bdf8'}; background: ${activeGeneSymbol==='H3-3A'?'rgba(239,68,68,0.15)':'rgba(56,189,248,0.06)'}; font-weight: bold; font-size: 0.85rem; color: #fff; min-width: 100px; text-align: center; box-shadow: 0 0 10px rgba(56,189,248,0.15);">Histone H3.3</div>
+                                </div>
+                                <div style="text-align: center; color: #475569; font-size: 0.9rem; margin: -4px 0;">⬇️</div>
+                                <!-- Tier 3: Chromatin Remodeling -->
+                                <div style="display: flex; justify-content: center; gap: 20px; align-items: center;">
+                                    <div style="font-size:0.7rem; opacity:0.5; text-transform:uppercase; width:80px; text-align:right;">Assembly</div>
+                                    <div style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid #10b981; background: rgba(16,185,129,0.06); font-size: 0.8rem; color: #cbd5e1; min-width: 100px; text-align: center;">Chromatin Deposition</div>
+                                </div>
+                                <div style="text-align: center; color: #475569; font-size: 0.9rem; margin: -4px 0;">⬇️</div>
+                                <!-- Tier 4: Targets -->
+                                <div style="display: flex; justify-content: center; gap: 20px; align-items: center;">
+                                    <div style="font-size:0.7rem; opacity:0.5; text-transform:uppercase; width:80px; text-align:right;">Outcome</div>
+                                    <div style="padding: 8px 16px; border-radius: 6px; border: 1.5px solid #fb923c; background: rgba(251,146,60,0.1); font-weight: 800; font-size: 0.85rem; color: #fb923c; min-width: 140px; text-align: center; box-shadow: 0 0 10px rgba(251,146,60,0.15);">Telomere Stability & Alternative Lengthening of Telomeres (ALT)</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                let headerHTML = `
+                    <div style="margin-bottom: 10px;">
+                        <span style="font-size:0.85rem; font-weight: 700; color: #f8fafc; display: block;">🎯 Primary Mapped Pathway: ${pName}</span>
+                        <span style="font-size:0.72rem; color: var(--text-secondary); display: block; margin-top: 2px;">${pDbRef}</span>
+                    </div>
+                `;
+
+                let detailsHTML = `
+                    <div style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 8px;">
+                        <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px;">🧬 Mapped Pathway References (Descriptive Human Pathways)</span>
+                        <div style="max-height: 80px; overflow-y: auto; font-size: 0.78rem;">
+                `;
+                if (pathways && pathways.length > 0) {
+                    pathways.forEach(p => {
+                        let dbColor = p.db === "KEGG" ? "#10b981" : "#38bdf8";
+                        detailsHTML += `
+                            <div style="margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; padding: 2px 4px;">
+                                <span style="color: #cbd5e1; font-weight: 500;">🔗 ${p.name}</span>
+                                <span style="font-size: 0.65rem; font-weight: bold; color: ${dbColor}; text-transform: uppercase;">[${p.db}]</span>
+                            </div>
+                        `;
+                    });
+                } else {
+                    detailsHTML += `<span style="opacity: 0.5;">No extra database cross-references mapped.</span>`;
+                }
+                detailsHTML += `</div></div>`;
+
+                // Render dynamic deep-links directly matching the queried gene and pathway
+                let quickLinksHTML = `
+                    <div style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                        <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 8px;">🔍 Deep Pathway Database Search Links (Direct Mapped Results)</span>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                            ${keggLink ? `<a href="${keggLink}" target="_blank" class="toolbar-btn" style="text-align: center; text-decoration: none; font-size: 0.75rem; padding: 8px 12px; background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); font-weight: bold;">🟢 KEGG Signaling Pathway Search ↗</a>` : `<span style="text-align: center; font-size: 0.75rem; padding: 8px 12px; opacity: 0.5; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 4px;">No KEGG Pathway</span>`}
+                            ${reactomeLink ? `<a href="${reactomeLink}" target="_blank" class="toolbar-btn" style="text-align: center; text-decoration: none; font-size: 0.75rem; padding: 8px 12px; background: rgba(56,189,248,0.15); color: #38bdf8; border: 1px solid rgba(56,189,248,0.3); font-weight: bold;">🔵 Reactome Interactive Pathway Search ↗</a>` : `<span style="text-align: center; font-size: 0.75rem; padding: 8px 12px; opacity: 0.5; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 4px;">No Reactome Pathway</span>`}
+                        </div>
+                    </div>
+                `;
+
+                pathwaysHTML = headerHTML + pathwayDiagramHTML + detailsHTML + quickLinksHTML;
+                
+                const pEl = document.getElementById("pathwayList");
+                if (pEl) pEl.innerHTML = pathwaysHTML;
+            });
+
+            // 3. Render Clinical Relevance Card (WHO CNS 2021 Decision Tree)
+            const atrxVal = document.getElementById("atrxStatus").value;
+            const codelVal = document.getElementById("codelStatus").value;
+            const cdknVal = document.getElementById("cdknStatus").value;
+            const egfrAmpVal = document.getElementById("egfrAmpStatus").value;
+            const tertVal = document.getElementById("tertStatus").value;
+
+            let integratedDiag = "";
+            let precisionNotes = [];
+            let gradText = "";
+
+            // Evaluate specific WHO CNS 2021 Glioma decision logic
+            let isIDHMut = (activeGeneSymbol === "IDH1" || activeGeneSymbol === "IDH2") && isMutation && (badgeClass === "badge-pathogenic" || isHotspot);
+            let isH3K27M = (activeGeneSymbol === "H3-3A" || activeGeneSymbol === "H3C2") && isMutation && activeLabel.includes("K27");
+            let isH3G34 = (activeGeneSymbol === "H3-3A" || activeGeneSymbol === "H3C2") && isMutation && activeLabel.includes("G34");
+            let isSMARCB1 = activeGeneSymbol === "SMARCB1" && isMutation && (badgeClass === "badge-pathogenic" || isHotspot);
+
+            if (isH3K27M) {
+                integratedDiag = "Diffuse Midline Glioma, H3 K27-altered";
+                gradText = "WHO Grade 4";
+                precisionNotes.push("The presence of the H3 K27M mutation in a diffuse midline glioma is sufficient for a diagnosis of WHO Grade 4, regardless of histopathological grade.");
+            } else if (isH3G34) {
+                integratedDiag = "Diffuse Hemispheric Glioma, H3 G34-mutant";
+                gradText = "WHO Grade 4";
+                precisionNotes.push("H3 G34R/V somatic mutations molecularly define this aggressive hemispheric tumor lineage.");
+            } else if (isSMARCB1) {
+                integratedDiag = "Atypical Teratoid/Rhabdoid Tumor (ATRT)";
+                gradText = "WHO Grade 4";
+                precisionNotes.push("Inactivation of SMARCB1 (INI1) is diagnostic of ATRT in pediatric CNS tumors.");
+            } else if (isIDHMut) {
+                if (codelVal === "codeleted") {
+                    integratedDiag = "Oligodendroglioma, IDH-mutant and 1p/19q-codeleted";
+                    gradText = "WHO Grade 2 or 3";
+                    precisionNotes.push("Meets standard WHO 2021 molecular criteria for Oligodendroglioma. Graded based on histopathological criteria (mitotic count, necrosis).");
+                    if (atrxVal === "lost") {
+                        precisionNotes.push("<strong style='color:#ef4444;'>Conflict detected:</strong> ATRX loss is mutually exclusive with 1p/19q codeletion in >99% of cases. Re-verify testing.");
+                    }
+                } else if (atrxVal === "lost" || activeGeneSymbol === "TP53") {
+                    if (cdknVal === "homo_deleted") {
+                        integratedDiag = "Astrocytoma, IDH-mutant";
+                        gradText = "WHO Grade 4 (Molecularly Graded)";
+                        precisionNotes.push("CDKN2A/B homozygous deletion acts as a high-grade molecular indicator in Astrocytoma, IDH-mutant, mandating Grade 4 even in the absence of histopathological necrosis.");
+                    } else {
+                        integratedDiag = "Astrocytoma, IDH-mutant";
+                        gradText = "WHO Grade 2 or 3";
+                        precisionNotes.push("Molecular profile matches Astrocytoma, IDH-mutant. Grade is determined histopathologically.");
+                    }
+                } else {
+                    integratedDiag = "IDH-mutant Diffuse Glioma (Unclassified)";
+                    precisionNotes.push("Requires confirmation of ATRX and 1p/19q status to differentiate between Astrocytoma and Oligodendroglioma.");
+                }
+            } else {
+                // IDH is wild type
+                if (egfrAmpVal === "amplified" || tertVal === "mutant") {
+                    integratedDiag = "Glioblastoma, IDH-wildtype";
+                    gradText = "WHO Grade 4 (Molecularly Defined)";
+                    precisionNotes.push("Under WHO 2021 criteria, an IDH-wildtype diffuse astrocytic glioma showing EGFR amplification OR TERT promoter mutation is classified as Glioblastoma, WHO Grade 4, regardless of histological grade.");
+                } else if (activeGeneSymbol === "BRAF" && isMutation && isHotspot) {
+                    integratedDiag = "BRAF V600E-mutant Glioneuronal Tumor";
+                    gradText = "WHO Grade 1 or 2 context";
+                    precisionNotes.push("Matches markers for Ganglioglioma, Pleomorphic Xanthoastrocytoma (PXA), or Pilocytic Astrocytoma.");
+                    if (cdknVal === "homo_deleted") {
+                        precisionNotes.push("Warning: CDKN2A/B deletion in BRAF V600E tumors indicates high risk of progression to Anaplastic PXA (WHO Grade 3).");
+                    }
+                } else {
+                    integratedDiag = "Diffuse Glioma, IDH-wildtype";
+                    gradText = "Grade requires integrated parameters";
+                    precisionNotes.push("Evaluate other glioblastoma markers (e.g. chromosome 7 gain/10 loss) to completely rule out molecular glioblastoma.");
+                }
+            }
+
+            function getSurgicalGuidelinesHTML(diagnosis) {
+                let pre = "";
+                let intra = "";
+                let post = "";
+                let source = "US (NCCN / AANS / CNS Joint Guidelines 2024) & European (EANO Consensus Protocols)";
+
+                if (diagnosis.includes("Oligodendroglioma")) {
+                    pre = "<strong>1. Pre-operative Plan:</strong> Volumetric 3D MRI, MR spectroscopy, and neuropsychological baseline mapping.";
+                    intra = "<strong>2. Intra-operative Surgery:</strong> Maximize safe cytoreductive resection. Map language/motor pathways if near eloquent cortex.";
+                    post = "<strong>3. Post-operative Adjuvant:</strong> Stratify by risk. Adjuvant radiotherapy followed by PCV (Procarbazine, Lomustine, Vincristine) is the established standard (RTOG 9802).";
+                } else if (diagnosis.includes("Astrocytoma, IDH-mutant")) {
+                    pre = "<strong>1. Pre-operative Plan:</strong> Functional MRI (fMRI) and Diffusion Tensor Imaging (DTI) tractography to map motor/sensory tracts.";
+                    intra = "<strong>2. Intra-operative Surgery:</strong> Aim for maximal safe resection. Utilize awake craniotomy with cortical mapping for eloquent lesions.";
+                    post = "<strong>3. Post-operative Adjuvant:</strong> Focal radiotherapy followed by adjuvant Temozolomide (TMZ) chemotherapy (CATNON protocol).";
+                } else if (diagnosis.includes("Glioblastoma") || diagnosis.includes("wildtype")) {
+                    pre = "<strong>1. Pre-operative Plan:</strong> High-dose dexamethasone to control vasogenic edema; advanced DTI/fMRI planning.";
+                    intra = "<strong>2. Intra-operative Surgery:</strong> Maximize safe cytoreduction using 5-ALA fluorescence-guided surgery (5-ALA) and intraoperative ultrasound.";
+                    post = "<strong>3. Post-operative Adjuvant:</strong> Stupp Protocol (adjuvant radiotherapy 60 Gy with concurrent & maintenance Temozolomide +/- TTFields).";
+                } else {
+                    pre = "<strong>1. Pre-operative Plan:</strong> Advanced neurological MRI cohort assessment to locate midline or brainstem boundaries.";
+                    intra = "<strong>2. Intra-operative Surgery:</strong> Safe subtotal decompression or stereotactic biopsy if midline/eloquent area involvement prevents resection.";
+                    post = "<strong>3. Post-operative Adjuvant:</strong> Palliative focal radiotherapy. Prioritize enrollment in clinical trials targeting pediatric molecular pathways.";
+                }
+
+                return `
+                    <div style="margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 8px;">
+                        <span style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:4px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; display: block;">🏥 US (NCCN/CNS/AANS) & European (EANO) Guidelines</span>
+                        <div style="font-size:0.8rem; line-height: 1.4; color: #f8fafc; display: flex; flex-direction: column; gap: 4px;">
+                            <div style="background: rgba(56,189,248,0.05); padding: 6px; border-radius: 4px; border-left: 3px solid #38bdf8;">${pre}</div>
+                            <div style="background: rgba(16,185,129,0.05); padding: 6px; border-radius: 4px; border-left: 3px solid #10b981;">${intra}</div>
+                            <div style="background: rgba(251,146,60,0.05); padding: 6px; border-radius: 4px; border-left: 3px solid #fb923c;">${post}</div>
+                            <div style="display: flex; gap: 8px; margin-top: 4px;">
+                                <a href="https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1425" target="_blank" class="toolbar-btn" style="flex: 1; text-align: center; text-decoration: none; font-size: 0.65rem; padding: 4px 6px; background: rgba(56,189,248,0.1); color: #38bdf8; border: 1px solid rgba(56,189,248,0.2); font-weight: bold;">NCCN Guideline Portal ↗</a>
+                                <a href="https://www.eano.eu/publications/eano-guidelines/" target="_blank" class="toolbar-btn" style="flex: 1; text-align: center; text-decoration: none; font-size: 0.65rem; padding: 4px 6px; background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.2); font-weight: bold;">EANO Protocol Portal ↗</a>
+                            </div>
+                            <span style="font-size: 0.65rem; color: var(--text-secondary); text-align: right; display: block; margin-top: 2px;">Source: ${source}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            let guidelinesHTML = getSurgicalGuidelinesHTML(integratedDiag);
+
+            document.getElementById("card3Body").innerHTML = `
+                <p style="margin:0 0 6px 0;"><strong>Integrated Precision Diagnosis:</strong><br><span style="font-size: 1.05rem; font-weight: 800; color: #3b82f6;">${integratedDiag}</span></p>
+                <p style="margin:0 0 6px 0;"><strong>Official WHO Grade:</strong> <span class="badge badge-pathogenic" style="font-size:0.75rem; padding:4px 10px;">${gradText || "Grade requires histopathology"}</span></p>
+                <hr style="margin: 8px 0;">
+                <p style="margin:0 0 4px 0;"><strong>WHO CNS 2021 Diagnostic Notes:</strong></p>
+                <ul style="padding-left: 0; list-style-type: none; margin: 0 0 8px 0;">
+                    ${precisionNotes.map(n => `<li style="position: relative; padding-left: 18px; margin-bottom: 4px;">${n}</li>`).join("")}
+                </ul>
+                <hr style="margin: 8px 0;">
+                <p style="margin:0 0 6px 0;"><strong>Recommendations:</strong> Integrate molecular findings directly with clinical neuro-imaging and surgical pathology reports.</p>
+                ${guidelinesHTML}
+            `;
+
+            // 4. Render PubMed Literature Card (Strictly Neuro-Oncology Focused)
+            let card4BodyHTML = "";
+            if (pubmedResult.success && pubmedResult.data.length > 0) {
+                card4BodyHTML += `<p style="font-size: 0.85rem; margin-bottom: 12px; color: var(--text-secondary);">Top 5 best matching clinical literature matches in Neuro-Oncology:</p>`;
+                pubmedResult.data.forEach(art => {
+                    card4BodyHTML += `
+                        <div style="border-bottom:1px solid var(--border-color); padding-bottom:8px; margin-bottom:8px;">
+                            <div style="font-weight:600; font-size:0.9rem;"><a href="${art.url}" target="_blank">📄 ${art.title}</a></div>
+                            <div style="font-size:0.75rem; opacity:0.8; margin-top:2px;"><strong>Source:</strong> ${art.source} (${art.date}) | <strong>PMID:</strong> ${art.pmid}</div>
+                        </div>
+                    `;
+                });
+            } else {
+                card4BodyHTML += `<p style="font-size:0.85rem; margin-bottom:12px;">No specific peer-reviewed articles found detailing ${activeGeneSymbol} ${cleanMutationName} in local index. Trigger search query below.</p>`;
+            }
+
+            // Append dynamic search link below
+            let cleanQueryMut = cleanMutationName.replace(/^p\./, "").replace(/[^a-zA-Z0-9]/g, "");
+            const searchQ = `${activeGeneSymbol}+${cleanQueryMut}+glioma`;
+            const pubmedLink = `https://pubmed.ncbi.nlm.nih.gov/?term=${searchQ}`;
+            card4BodyHTML += `
+                <div style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                    <p style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:6px;"><strong>Alternative Clinical Search strategy:</strong></p>
+                    <a href="${pubmedLink}" target="_blank" style="font-size:0.85rem; font-weight:700; color:#38bdf8; text-decoration:none;">
+                        🔍 Execute Dynamic PubMed Search for ${activeGeneSymbol} ${cleanQueryMut} in Glioma ↗
+                    </a>
+                </div>
+            `;
+            document.getElementById("card4Body").innerHTML = card4BodyHTML;
+
+            // Save text for clinical report
+            finalReportText = `NeuroGeno3D CLINICAL VARIANT REPORT (WHO CNS 2021 ALIGNED)
+Gene Symbol: ${activeGeneSymbol} (${activeProteinName})
+UniProt Accession: ${activeUniprotId}
+Variant: ${activeLabel}
+Genomic Coordinates: ${chromLoc}
+Pathogenicity Significance: ${clinvarSignificance}
+ClinVar Review Status: ${reviewStatus}
+Phenotypes: ${phenotypes.join(", ")}
+
+WHO CNS 2021 INTEGRATED DIAGNOSIS:
+Diagnosis: ${integratedDiag}
+Grade: ${gradText}
+Evaluation Timestamp: ${new Date().toISOString()}
+
+Disclaimer: Research and Educational Use Only.
+`;
+
+            load3DViewer(cleanSequence, mutationPosition);
+        }
+
+        async function getLiveClinvar(gene, variant) {
+            try {
+                let term = `${gene} ${variant}`;
+                let res = await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=clinvar&term=${encodeURIComponent(term)}&retmode=json`);
+                if (res.ok) {
+                    let searchData = await res.json();
+                    let ids = searchData.esearchresult?.idlist || [];
+                    if (ids.length > 0) {
+                        let summaryRes = await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=clinvar&id=${ids.join(",")}&retmode=json`);
+                        if (summaryRes.ok) {
+                            let summaryData = await summaryRes.json();
+                            let resultData = summaryData.result || {};
+                            let uid = resultData.uids ? resultData.uids[0] : null;
+                            if (uid) {
+                                let rec = resultData[uid];
+                                
+                                let significance = "Variant of Uncertain Significance (VUS)";
+                                let review_status = "No assertions documented";
+                                let last_evaluated = "N/A";
+
+                                for (let key of ['germline_classification', 'clinical_impact_classification', 'oncogenicity_classification']) {
+                                    if (rec[key]) {
+                                        significance = rec[key].description || significance;
+                                        review_status = rec[key].review_status || review_status;
+                                        last_evaluated = rec[key].last_evaluated || last_evaluated;
+                                    }
+                                }
+
+                                let phenotypes = [];
+                                for (let key of ['germline_classification', 'clinical_impact_classification', 'oncogenicity_classification']) {
+                                    if (rec[key] && rec[key].trait_set) {
+                                        rec[key].trait_set.forEach(t => {
+                                            if (t.trait_name && !phenotypes.includes(t.trait_name)) {
+                                                phenotypes.push(t.trait_name);
+                                            }
+                                        });
+                                    }
+                                }
+
+                                let chrom = "Unknown", start = "Unknown", band = "Unknown";
+                                if (rec.variation_set) {
+                                    rec.variation_set.forEach(measure => {
+                                        if (measure.variation_loc) {
+                                            measure.variation_loc.forEach(loc => {
+                                                if (loc.assembly_name === "GRCh38") {
+                                                    chrom = loc.chr || chrom;
+                                                    start = loc.start || start;
+                                                    band = loc.band || band;
+                                                }
+                                            });
+                                        }
+                                    });
+                                }
+
+                                let freqs = [];
+                                if (rec.variation_set) {
+                                    rec.variation_set.forEach(measure => {
+                                        if (measure.allele_freq_set) {
+                                            measure.allele_freq_set.forEach(freq => {
+                                                freqs.push({
+                                                    source: freq.source || "Unknown",
+                                                    value: freq.value || "0.0"
+                                                });
+                                            });
+                                        }
+                                    });
+                                }
+
+                                return {
+                                    success: true,
+                                    data: { significance, review_status, last_evaluated, phenotypes, chrom, start, band, freqs }
+                                };
+                            }
+                        }
+                    }
+                }
+            } catch (e) {}
+        }
+
+        async function getLivePathways(uniprotId) {
+            try {
+                // Fetch the comprehensive UniProt XML/JSON entry from EMBL-EBI Proteins API
+                let res = await fetch(`https://www.ebi.ac.uk/proteins/api/proteins/${uniprotId}`);
+                if (res.ok) {
+                    let data = await res.json();
+                    let refs = data.dbReferences || [];
+                    
+                    // Filter pathways from KEGG and Reactome only
+                    let pathways = [];
+                    refs.forEach(ref => {
+                        if (["Reactome", "KEGG"].includes(ref.type)) {
+                            let name = ref.properties?.pathwayName || ref.properties?.entryName || ref.id;
+                            pathways.push({
+                                db: ref.type,
+                                id: ref.id,
+                                name: name
+                            });
+                        }
+                    });
+                    
+                    // Deduplicate pathways by name and limit to top 8 items for clean layout
+                    let uniquePathways = [];
+                    let seenNames = new Set();
+                    pathways.forEach(p => {
+                        let cleanName = p.name.toLowerCase().trim();
+                        if (!seenNames.has(cleanName)) {
+                            seenNames.add(cleanName);
+                            uniquePathways.push(p);
+                        }
+                    });
+                    
+                    return uniquePathways.slice(0, 8);
+                }
+            } catch (e) {
+                console.error("Pathways API Error:", e);
+            }
+            return [];
+        }
+
+        async function getLiveGuidelines(diagnosis) {
+            try {
+                let disease = diagnosis.split(",")[0];
+                // Restrict queries to official societies (NCCN, EANO, WHO, ESMO, AANS, CNS, society, consensus)
+                let query = `(title:"surgical guidelines" OR title:"consensus guidelines" OR title:"clinical guidelines" OR title:"society guidelines") AND "${disease}" AND (NCCN OR EANO OR WHO OR ESMO OR AANS OR CNS OR society OR consensus OR association OR coalition)`;
+                let res = await fetch(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(query)}&format=json&resultType=lite`);
+                if (res.ok) {
+                    let data = await res.json();
+                    if (data.resultList && data.resultList.result && data.resultList.result.length > 0) {
+                        return data.resultList.result.slice(0, 3);
+                    }
+                }
+                
+                // Fallback to general society glioma surgical consensus guidelines
+                let fallbackQuery = `(title:"surgical guidelines" OR title:"consensus guidelines" OR title:"clinical guidelines") AND (glioma OR glioblastoma OR astrocytoma) AND (NCCN OR EANO OR WHO OR AANS OR CNS OR society OR consensus OR association)`;
+                let fallbackRes = await fetch(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(fallbackQuery)}&format=json&resultType=lite`);
+                if (fallbackRes.ok) {
+                    let data = await fallbackRes.json();
+                    if (data.resultList && data.resultList.result && data.resultList.result.length > 0) {
+                        return data.resultList.result.slice(0, 3);
+                    }
+                }
+            } catch (e) {
+                console.error("Guidelines API Error:", e);
+            }
+            return [];
+        }
+
+        async function getLivePubmed(gene, variant) {
+            try {
+                let term = `${gene} ${variant} AND (glioma OR "brain tumor" OR astrocytoma OR oligodendroglioma OR glioblastoma OR "neuro-oncology")`;
+                let res = await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(term)}&retmode=json&retmax=5`);
+                if (res.ok) {
+                    let searchData = await res.json();
+                    let ids = searchData.esearchresult?.idlist || [];
+                    if (ids.length > 0) {
+                        let summaryRes = await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=${ids.join(",")}&retmode=json`);
+                        if (summaryRes.ok) {
+                            let summaryData = await summaryRes.json();
+                            let result = summaryData.result || {};
+                            let articles = [];
+                            ids.forEach(id => {
+                                let art = result[id];
+                                if (art) {
+                                    articles.push({
+                                        pmid: id,
+                                        title: art.title || "No Title",
+                                        date: art.pubdate || "Unknown Date",
+                                        source: art.source || "Unknown Journal",
+                                        url: `https://pubmed.ncbi.nlm.nih.gov/${id}/`
+                                    });
+                                }
+                            });
+                            return { success: true, data: articles };
+                        }
+                    }
+                }
+            } catch (e) {}
+            return { success: false };
+        }
+
+        async function load3DViewer(sequence, mutationPos) {
+            document.getElementById("gldiv").innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #3b82f6; font-weight: bold; font-size: 0.9rem; gap: 12px; background-color: #090c15;">
+                    <div style="width: 28px; height: 28px; border: 3px solid rgba(59,130,246,0.15); border-top-color: #3b82f6; border-radius: 50%; animation: molSpin 0.8s linear infinite;"></div>
+                    <span>Modeling 3D Target Structure...</span>
+                </div>
+            `;
+
+            glviewer = $3Dmol.createViewer("gldiv", {defaultcolors: $3Dmol.rasmolElementColors});
+            
+            let folded = false;
+            let targetSeq = sequence;
+            let adjustedMutationPos = mutationPos;
+
+            if (sequence.length > 500) {
+                let start = Math.max(0, mutationPos - 150);
+                let end = Math.min(sequence.length, mutationPos + 150);
+                targetSeq = sequence.substring(start, end);
+                adjustedMutationPos = mutationPos - start;
+                document.getElementById("structureSourceText").textContent = "Structure Source: ESMFold Local Fragment";
+            }
+
+            if (!isOfflineMode) {
+                try {
+                    let esmRes = await fetch("https://api.esmatlas.com/foldSequence/v1/pdb/", {
+                        method: "POST",
+                        body: targetSeq,
+                        headers: { "Content-Type": "text/plain" }
+                    });
+                    if (esmRes.ok) {
+                        let pdbText = await esmRes.text();
+                        glviewer.addModel(pdbText, "pdb");
+                        folded = true;
+                        if (sequence.length <= 500) {
+                            document.getElementById("structureSourceText").textContent = "Structure Source: Live ESMFold API";
+                        }
+                    }
+                } catch (e) {}
+            }
+
+            if (!folded) {
+                const isPreset = document.querySelector('input[name="geneMode"]:checked').value === "preset";
+                const presetInfo = isPreset ? GENE_DB[activeGeneSymbol] : null;
+                let pdbId = presetInfo ? presetInfo.pdb_id : "1TUP";
+                document.getElementById("structureSourceText").textContent = `Structure Source: RCSB PDB (${pdbId})`;
+                
+                await new Promise((resolve) => {
+                    $3Dmol.download(`pdb:${pdbId}`, glviewer, {}, function() {
+                        resolve();
+                    });
+                });
+            }
+
+            glviewer.setStyle({chain: "A"}, { cartoon: { colorscheme: "secondaryStructure" } });
+            glviewer.setStyle({chain: ["B", "C", "D"]}, { line: { opacity: 0.1 } });
+
+            glviewer.addStyle({chain: "A", resi: adjustedMutationPos.toString()}, {
+                stick: {color: '#ef4444', radius: 0.4},
+                sphere: {color: '#ef4444', scale: 0.6}
+            });
+            glviewer.zoomTo({chain: "A", resi: adjustedMutationPos.toString()});
+
+            glviewer.spin(isSpinning);
+            glviewer.render();
+
+            // Display the static indicator label pointing to the centered residue
+            const overlay = document.getElementById("visOverlayLabel");
+            if (overlay) {
+                overlay.style.display = "flex";
+                overlay.style.opacity = isSpinning ? "0" : "1";
+            }
+        }
+
+        function toggleSpin() {
+            isSpinning = !isSpinning;
+            const btn = document.getElementById("spinBtn");
+            const overlay = document.getElementById("visOverlayLabel");
+            if (isSpinning) {
+                btn.classList.add("active");
+                btn.innerHTML = "⏸️ Stop Spin";
+                if (overlay) overlay.style.opacity = "0";
+            } else {
+                btn.classList.remove("active");
+                btn.innerHTML = "🔄 Auto Spin";
+                if (overlay) overlay.style.opacity = "1";
+            }
+            if (glviewer) {
+                glviewer.spin(isSpinning);
+            }
+        }
+
+        function downloadReport() {
+            // Format current date and time (DD/MM/YYYY - 24H)
+            const now = new Date();
+            const day = String(now.getDate()).padStart(2, '0');
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const year = now.getFullYear();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const formattedDateTime = `${day}/${month}/${year} - ${hours}:${minutes}`;
+
+            // Retrieve the HTML of Cards 1, 2, 3, 4, and 5
+            const card1Raw = document.getElementById("card1Body")?.innerHTML || "";
+            const card2Raw = document.getElementById("card2Body")?.innerHTML || "";
+            const card3Raw = document.getElementById("card3Body")?.innerHTML || "";
+            const card4Raw = document.getElementById("card4Body")?.innerHTML || "";
+            const card5Raw = document.getElementById("pathwayList")?.innerHTML || "";
+
+            // Helper to sanitize and translate dark-theme variables/light text colors into high-contrast print colors
+            function cleanHTMLForPrint(html) {
+                if (!html) return "";
+                let clean = html;
+                
+                // Replace light text/foreground colors with solid dark gray/black
+                clean = clean.replace(/color:\s*#f8fafc/gi, 'color: #0f172a');
+                clean = clean.replace(/color:\s*#cbd5e1/gi, 'color: #334155');
+                clean = clean.replace(/color:\s*#ffffff/gi, 'color: #000000');
+                clean = clean.replace(/color:\s*#fff/gi, 'color: #000000');
+                clean = clean.replace(/color:\s*var\(--text-secondary\)/gi, 'color: #475569');
+                clean = clean.replace(/color:\s*#94a3b8/gi, 'color: #475569');
+
+                // Adjust transparency background overlays for printable high-contrast
+                clean = clean.replace(/rgba\(255,\s*255,\s*255,\s*0\.03\)/gi, '#f1f5f9');
+                clean = clean.replace(/rgba\(255,\s*255,\s*255,\s*0\.02\)/gi, '#f8fafc');
+                clean = clean.replace(/rgba\(255,\s*255,\s*255,\s*0\.05\)/gi, '#e2e8f0');
+                
+                // Make biological pathway status cards clean with bold dark fonts
+                clean = clean.replace(/background:\s*rgba\(15,\s*23,\s*42,\s*0\.45\)/gi, 'background: #f8fafc; border: 1px solid #cbd5e1;');
+                clean = clean.replace(/background:\s*rgba\(56,\s*189,\s*248,\s*0\.06\)/gi, 'background: rgba(56,189,248,0.12); color: #0369a1;');
+                clean = clean.replace(/background:\s*rgba\(16,\s*185,\s*129,\s*0\.06\)/gi, 'background: rgba(16,185,129,0.12); color: #047857;');
+                clean = clean.replace(/background:\s*rgba\(239,\s*68,\s*68,\s*0\.15\)/gi, 'background: rgba(239,68,68,0.12); color: #b91c1c;');
+                clean = clean.replace(/background:\s*rgba\(251,\s*146,\s*60,\s*0\.1\)/gi, 'background: rgba(251,146,60,0.12); color: #c2410c;');
+                clean = clean.replace(/background:\s*rgba\(251,\s*146,\s*60,\s*0\.05\)/gi, 'background: rgba(251,146,60,0.08); color: #c2410c;');
+                clean = clean.replace(/background:\s*rgba\(16,\s*185,\s*129,\s*0\.05\)/gi, 'background: rgba(16,185,129,0.08); color: #047857;');
+                clean = clean.replace(/background:\s*rgba\(56,\s*189,\s*248,\s*0\.05\)/gi, 'background: rgba(56,189,248,0.08); color: #0369a1;');
+                
+                // Keep print-friendly badges readable
+                clean = clean.replace(/class="badge\s+badge-pathogenic"/gi, 'class="badge" style="background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:4px;"');
+                clean = clean.replace(/class="badge\s+badge-benign"/gi, 'class="badge" style="background:#d1fae5; color:#065f46; padding:2px 8px; border-radius:4px;"');
+                clean = clean.replace(/class="badge\s+badge-vus"/gi, 'class="badge" style="background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:4px;"');
+                
+                // Hide interactive links/buttons text decoration & URL markers inside PDF if necessary
+                clean = clean.replace(/class="toolbar-btn"/gi, 'style="display:inline-block; font-size: 0.7rem; padding: 4px 8px; text-decoration: none; border-radius:4px; font-weight: bold; border: 1px solid #cbd5e1; color:#0369a1;"');
+                
+                return clean;
+            }
+
+            const card1HTML = cleanHTMLForPrint(card1Raw);
+            const card2HTML = cleanHTMLForPrint(card2Raw);
+            const card3HTML = cleanHTMLForPrint(card3Raw);
+            const card4HTML = cleanHTMLForPrint(card4Raw);
+            
+            // Extract only the text descriptors and lists from Card 5, excluding any SVG graphics
+            const card5CleanHTML = cleanHTMLForPrint(card5Raw);
+
+            // Create a clean, high-contrast white printable report container
+            const element = document.createElement("div");
+            element.style.fontFamily = "'Plus Jakarta Sans', sans-serif";
+            element.style.color = "#1e293b";
+            element.style.padding = "35px";
+            element.style.background = "#ffffff";
+            element.style.lineHeight = "1.5";
+            element.style.fontSize = "11px";
+
+            element.innerHTML = `
+                <style>
+                    a { color: #0369a1 !important; text-decoration: none !important; }
+                    ul { padding-left: 20px !important; margin: 6px 0 !important; }
+                    li { margin-bottom: 4px !important; }
+                    hr { border: 0 !important; border-top: 1px solid #e2e8f0 !important; margin: 12px 0 !important; }
+                    p { margin: 0 0 6px 0 !important; }
+                    code { background: #f1f5f9 !important; color: #0f172a !important; padding: 2px 4px !important; border-radius: 4px !important; font-family: monospace !important; }
+                </style>
+                <div style="border-bottom: 2px solid #3b82f6; padding-bottom: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div>
+                        <h1 style="color: #1e3a8a; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">NeuroGeno3D</h1>
+                        <p style="margin: 2px 0 0 0; font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Clinical Precision Variant Report</p>
+                    </div>
+                    <div style="text-align: right; font-size: 10px; color: #475569;">
+                        <p style="margin: 0;"><strong>Report Date/Time:</strong> ${formattedDateTime}</p>
+                        <p style="margin: 2px 0 0 0;"><strong>Target Gene:</strong> ${activeGeneSymbol}</p>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #1e3a8a; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin: 0 0 10px 0; font-size: 12px; font-weight: 800; text-transform: uppercase;">1. Variant Classification Summary</h3>
+                    <div style="padding-left: 5px; color: #334155;">
+                        ${card1HTML}
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #1e3a8a; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin: 0 0 10px 0; font-size: 12px; font-weight: 800; text-transform: uppercase;">2. Molecular & Structural Impact</h3>
+                    <div style="padding-left: 5px; color: #334155;">
+                        ${card2HTML}
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 20px; page-break-before: always;">
+                    <h3 style="color: #1e3a8a; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin: 0 0 10px 0; font-size: 12px; font-weight: 800; text-transform: uppercase;">3. WHO Integrated Diagnosis & Guidelines</h3>
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; color: #1e293b;">
+                        ${card3HTML}
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #1e3a8a; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin: 0 0 10px 0; font-size: 12px; font-weight: 800; text-transform: uppercase;">4. Downstream Pathway Network References</h3>
+                    <div style="padding-left: 5px; color: #334155;">
+                        ${card5CleanHTML}
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #1e3a8a; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin: 0 0 10px 0; font-size: 12px; font-weight: 800; text-transform: uppercase;">5. Peer-Reviewed Evidence Feeds (PubMed)</h3>
+                    <div style="padding-left: 5px; color: #334155;">
+                        ${card4HTML}
+                    </div>
+                </div>
+
+                <div style="border-top: 1px solid #cbd5e1; padding-top: 12px; margin-top: 30px; font-size: 8px; color: #64748b; text-align: justify; line-height: 1.4;">
+                    <strong>Clinical Interpretation Disclaimer:</strong> Research and Educational Use Only. This application retrieves verified molecular classifications and guidelines from standard, peer-reviewed biomedical resources (including WHO CNS5, ClinVar, PubMed, KEGG, Reactome, NCCN, and EANO). However, because this integrated software platform has not undergone human clinical trials, any novel, rare, or computationally predicted variants must be validated by certified diagnostic assays.
+                    <div style="margin-top: 8px; text-align: center; font-weight: bold; color: #1e3a8a; font-size: 10px;">Developer: Dr. Rijhul Lahariya &nbsp;&bull;&nbsp; Contact: dr.rijhullahariya@gmail.com</div>
+                </div>
+            `;
+
+            // Render option parameters optimized for multi-page text structures
+            const cleanLabel = activeLabel ? activeLabel.split(" ")[0].replace(/[^a-zA-Z0-9]/g, "") : "Variant";
+            const opt = {
+                margin:       [12, 12, 12, 12],
+                filename:     `NeuroGeno3D_Report_${activeGeneSymbol}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 3, useCORS: true, letterRendering: true },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Temporarily append element to DOM to calculate heights and page-breaks correctly
+            document.body.appendChild(element);
+            html2pdf().set(opt).from(element).save().then(() => {
+                document.body.removeChild(element);
+            });
+        }
+    </script>
+</body>
+</html>
